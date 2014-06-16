@@ -1,0 +1,80 @@
+/*
+Common styles for widgets
+*/
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #00B2EF;
+  shape-rendering: crispEdges;
+}
+
+.x.axis path {
+  display: none;
+}
+
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+}
+
+circle {
+  fill: rgb(31, 119, 180);
+  fill-opacity: .25;
+  stroke: rgb(31, 119, 180);
+  stroke-width: 1px;
+}
+
+.resourceType{
+    fill: #83d1f5;
+    stroke: #393a3f;    
+}
+
+.resourceTypeLabel{
+    fill: #D9F3F9;
+    font-family: "HelvNeue Bold for IBM", Helvetica, sans-serif;
+    font-size: 20px;
+    text-anchor:start;
+}
+
+.resourceStatsTableRowTitle{
+    font-family: "HelvNeue Bold for IBM", Helvetica, sans-serif;
+    font-size: 20px;
+
+}
+
+.resourceStatsTableValue{
+    font-family: "HelvNeue Bold for IBM", Helvetica, sans-serif;
+    font-size: 20px;
+}
+
+.resourceStatsTableHeader{
+    font-family: "HelvNeue Bold for IBM", Helvetica, sans-serif;
+    font-size: 20px;
+}
+
+.leaf circle {
+  /*fill: #ff7f0e;*/
+  /*fill-opacity: 1;*/
+}
+
+.integrationNodeLabel {
+    font-family: "HelvNeue Bold for IBM", Helvetica, sans-serif;
+    font-size: 25px;    
+    fill:  #00B2EF;
+    
+}
+.integrationServerLabel {
+    font-family: "HelvNeue Bold for IBM", Helvetica, sans-serif;
+    font-size: 20px;    
+    fill:  #00B2EF;
+}
+
+
+
+/*.clone {
+    position: absolute;
+}*/
+
+
+
