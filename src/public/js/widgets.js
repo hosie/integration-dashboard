@@ -12,7 +12,7 @@ Author John Hosie
 */
 registerWidgetFactory(["IntegrationNode","broker"],function(){
     return {
-        name:"Broker pack",            
+        name:"Broker circle pack",            
         scalable:true,
         scrollable:false,
         height:400,

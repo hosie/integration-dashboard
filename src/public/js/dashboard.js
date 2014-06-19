@@ -178,153 +178,19 @@ function toggleNodeBubbles(d,node){
     }
 }
 
-
-/*drawNodes( [
-{
-    name:"node1",
-    type:"IntegrationNode",
-    executionGroups:{executionGroup:[
-      {
-        type:"executionGroup",
-        name:"EG1"
-      }      ,
-      {
-          type:"executionGroup",
-          name:"EG1"
-      }
-    ]}
-},
-{
-    name:"node1",
-    executionGroups:{executionGroup:[
-      {
-        type:"executionGroup",
-          name:"EG1"
-      }      ,
-        {
-            type:"executionGroup",
-          name:"EG1"
-      }      ,
-     {
-         type:"executionGroup",
-          name:"EG1"
-      }
-    ]}
-},
-{
-    name:"node1",
-    executionGroups:{executionGroup:[
-      {
-        type:"executionGroup",
-          name:"EG1"
-      }     ,
-     {
-         type:"executionGroup",
-          name:"EG1"
-      }     ,
-     {
-         type:"executionGroup",
-          name:"EG1"
-      }     ,
-     {
-         type:"executionGroup",
-          name:"EG1"
-      }     ,
-     {
-         type:"executionGroup",
-          name:"EG1"
-      }     ,
-     {
-         type:"executionGroup",
-          name:"EG1"
-      }      
-    ]}
-},
-{
-    type:"executionGroup",
-    name:"node1",
-    executionGroups:{executionGroup:[
-      {
-        type:"executionGroup",
-          name:"EG1"
-      }     ,
-     {
-         type:"executionGroup",
-          name:"EG1"
-      }     ,
-     {
-         type:"executionGroup",
-          name:"EG1"
-      }     ,
-     {
-         type:"executionGroup",
-          name:"EG1"
-      }     ,
-     {
-         type:"executionGroup",
-          name:"EG1"
-      }     ,
-     {
-         type:"executionGroup",
-          name:"EG1"
-      }     ,
-     {
-         type:"executionGroup",
-          name:"EG1"
-      }     ,
-     {
-         type:"executionGroup",
-          name:"EG1"
-      }     ,
-     {
-         type:"executionGroup",
-          name:"EG1"
-      }     ,
-     {
-         type:"executionGroup",
-          name:"EG1"
-      }     ,
-     {
-         type:"executionGroup",
-          name:"EG1"
-      }      
-    ]}
-}
-]);
-*/
-var globalBusData;
-if(test==true) {
-
-drawNodes(sampleJSON.integrationNodes.integrationNode);
-
-}else{
-
-d3.json("/apiv1/integrationbus?depth=7", function(error, root) {
-    globalBusData=root;
-    console.dir(root);
-    globalBusData.update = function(brokerName,executionGroupName,applicationName,flowName,cpu){
-      this.integrationNodes.integrationNode.forEach(function(broker){
-          if(broker.name==brokerName)
-          {
-              broker.executionGroups.executionGroup.forEach(function(executionGroup){
-                  if(executionGroup.name==executionGroupName)
-                  {
-                      executionGroup.applications.application.forEach(function(application){
-                          if(application.name==applicationName)
-                          {
-                              application.messageFlows.messageFlow.forEach(function(messageFlow){
-                                  if(messageFlow.name==flowName)
-                                  {
-                                      messageFlow.cpu= cpu;
-                                  }
-                              });
-                          }
-                      });                      
-                  }
-              });
-          }
-      });
-  }
+getIntegrationBus( function(error, root) {
+    
     drawNodes(root.integrationNodes.integrationNode);
 });
+
+function initDashboard(){
+    $("body").droppable({
+        accept:".observable",
+        drop: function( event, ui ) {
+            widgetFactory(ui.draggable.get(0).draggedData);            
+      }
+    }
+    );
+
 }
+
