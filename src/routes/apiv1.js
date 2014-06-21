@@ -16,6 +16,25 @@ var http = require('http');
 
 var integrationnodes=[];
 
+module.exports = function(hostlist){
+    hostlist.forEach(function(item,i){
+        integrationnodes.push({
+            host:item.host,
+            port:item.port,
+            mqtt:item.mqtt
+        });
+    });
+    initNodes();
+
+    router.get('/integrationnodes',function(req,res){
+        res.send(integrationnodes);
+    });
+
+    router.get('/integrationbus',getIntegrationBus);    
+    
+    return router;
+}
+
 function initNodes(){
     integrationnodes.forEach(function(item,i){
         var options = {
@@ -53,24 +72,7 @@ function initNodes(){
     });
 }
 
-module.exports = function(hostlist){
-    hostlist.forEach(function(item,i){
-        integrationnodes.push({
-            host:item.host,
-            port:item.port,
-            mqtt:item.mqtt
-        });
-    });
-    initNodes();
 
-    router.get('/integrationnodes',function(req,res){
-        res.send(integrationnodes);
-    });
-
-    router.get('/integrationbus',getIntegrationBus);    
-    
-    return router;
-}
 
 
 function getIntegrationBus(request,reply){
@@ -83,7 +85,7 @@ function getIntegrationBus(request,reply){
     var replyObject={
         type:"IntegrationBus",
         integrationNodes:{
-            uri:"/integrationbus/integrationnodes",    
+            uri:"/integrationbus/integrationnodes",
             integrationNode:[]
         }
     };    
@@ -102,7 +104,12 @@ function getIntegrationBus(request,reply){
           method: 'GET'
       };
 
-      var nextNode = {name:nextHost.name};
+      var nextNode = {
+          name:nextHost.name,
+          host:nextHost.host,
+          mqtt:nextHost.mqtt,
+          port:nextHost.port
+      };
       replyObject.integrationNodes.integrationNode.push(nextNode);
 
       var resultObject;
@@ -115,14 +122,28 @@ function getIntegrationBus(request,reply){
 
           res.on('data', function (chunk) {
               console.log("on data:"+chunk);
-              resultString=resultString+chunk;              
+              resultString=resultString+chunk;
           });
           res.on('end',function(){
               console.log("on end");
               var resultObject = JSON.parse(resultString);
               console.dir(resultObject);
               nextNode.type = "broker";
-              nextNode.executionGroups=resultObject;       
+              nextNode.executionGroups=resultObject;
+              //enrich the object with topic names for flow stats
+              nextNode.executionGroups.executionGroup.forEach(function(executionGroup){
+                  executionGroup.applications.application.forEach(function(application){
+                      application.messageFlows.messageFlow.forEach(function(messageFlow){
+                          var topic="$SYS/Broker/" + nextNode.name +
+                               "/Statistics/JSON/SnapShot/" + executionGroup.name +
+                               "/applications/" + application.name +
+                               "/messageflows/" + messageFlow.name;
+                          messageFlow.flowStatsTopic = topic;
+                      });
+                  });
+                  
+              });
+              
               remainingRequest--;       
               console.log(remainingRequest + " remaining");
               if(remainingRequest == 0) {
@@ -140,6 +161,7 @@ function getIntegrationBus(request,reply){
           //TODO copy error to reply object?
           remainingRequest--;
           if(remainingRequest == 0) {
+
               reply.send(replyObject);
           }
       });

@@ -27,13 +27,13 @@ registerWidgetFactory(["IntegrationNode","broker"],function(){
           .size([diameter - 4, diameter - 4])
           .sort(null)
           .value(function(d) { 
-              if( d.cpu ==  undefined) {
+              if( d.currentSnapShot ==  undefined) {
                   return 1;
               }
-              if( d.cpu ==  0) {
+              if( d.currentSnapShot.TotalCPUTime ==  0) {
                   return 1;
               }
-              return d.cpu; 
+              return d.currentSnapShot.TotalCPUTime; 
            })
           .padding(2)
           .children(function(d){
@@ -55,7 +55,7 @@ registerWidgetFactory(["IntegrationNode","broker"],function(){
           
 
           var rootSvg = null;
-          listenToStats(data,onError,
+          data.addListener(
               function(currentSnapShot){
 
 
@@ -71,25 +71,6 @@ registerWidgetFactory(["IntegrationNode","broker"],function(){
                 var node = nodeRoot.selectAll(".node")
                    //let the visuals see the data
                   .data(pack.nodes);
-
-                
-                var currentFlow               = currentSnapShot.WMQIStatisticsAccounting.MessageFlow;
-                var currentBrokerName         = currentFlow.BrokerLabel;
-                var currentExecutionGroupName = currentFlow.ExecutionGroupName;
-                var currentApplicationName    = currentFlow.ApplicationName;
-                var currentFlowName           = currentFlow.MessageFlowName;
-                var currentCpu                = currentFlow.TotalCPUTime;
-
-                //update the data in the pack
-                //TODO - add or update this entry in root
-                //e.g.
-                //
-                //if root.get(broker.app.flow)
-                //need to add a getByPath type of function to root object.  and also chanve the accessors passed to .text below and .value above
-                
-                globalBusData.update(currentBrokerName,currentExecutionGroupName,currentApplicationName,currentFlowName,currentCpu);
-
-                
 
                 var newNode = node.enter().append("g")
                     .attr("class", function(d) { 

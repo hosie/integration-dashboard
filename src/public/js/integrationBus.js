@@ -12,67 +12,156 @@ Author John Hosie
 */
 
 //TODO get hostname and port of MQTT socket from the REST API
-var hostname="localhost";
+var hostname="TODO-gethostnamefromREST";
 var port = 1883;
 var clientIdIndex=0;
 function nextClientId(){
     clientIdIndex=clientIdIndex+1;
-    return "hosie" + clientIdIndex;
+    return "hosie2" + clientIdIndex;
 }
+//Define prototypes
+var IntegrationNode = {
+    connected:false,
+    flowsByTopic:{},
+    listeners:[],    
+    connect:function(/*callback*/){
+              if(this.connected) {
+                  //callback();
+              }else{
+                  this.mqttClient = new Messaging.Client(this.host, this.mqtt, nextClientId());
+                  var thisObject = this; //to reference this in callbacks
+
+                  this.mqttClient.onMessageArrived = function(message){                      
+                      thisObject.handleStats(message);
+                  }
+
+                  this.mqttClient.onConnectionLost =function(response){
+                      //TODO error handling, should really call errCallback?
+                      console.dir(response);
+                      alert("connection lost");
+                  };
+
+                  var connectOptions = new Object();
+                  connectOptions.timeout=5;        
+                  connectOptions.keepAliveInterval = 60;  
+                  connectOptions.useSSL = false;
+                  
+                  
+                  connectOptions.onSuccess = function(){
+                      thisObject.connected=true;
+                      var options = {qos:0, onFailure: function(responseObject) {alert(responseObject.errorMessage);}};
+                      var flowStatsTopic = "$SYS/Broker/" + thisObject.name + "/Statistics/JSON/SnapShot/#/applications/#/messageflows/#";
+                      //var flowStatsTopic = "#";//$SYS/Broker/#/JSON/messageflows/#";
+                      //var flowStatsTopic = "$SYS/Broker/MQNODE/Statistics/JSON/SnapShot/payments/applications/StandingOrder/messageflows/#";
+                      thisObject.mqttClient.subscribe(flowStatsTopic,options);
+                      //callback();                     
+                  };
+
+                  connectOptions.onFailure = function (responseObject) { alert(responseObject.errorMessage);};        
+                  this.mqttClient.connect(connectOptions);
+
+              }
+
+    },
+    /*subscribe: function(messageFlow){
+         
+         if(this.connected==false) {
+             connect(function(){
+                 subscribe(messageFlow)
+             });
+         }else{
+             var options = {qos:0, onFailure: function(responseObject) {alert(responseObject.errorMessage);}};
+             listener.client.subscribe(messageFlow.flowStatsTopic,options);
+         }
+    },*/
+    handleStats: function(message){
+         try{
+             var payloadObj = JSON.parse(message.payloadString);
+             
+             var flow = this.flowsByTopic[message.destinationName];
+             flow.update(payloadObj);
+             this.listeners.forEach(function(item){
+                 item();
+             });
+             //TODO if resource stats...
+         }catch(err){
+             alert("Error in handle stats: " + err.message + err.stack);
+         }
+    },
+    registerFlow : function(messageFlow){
+         this.flowsByTopic[messageFlow.flowStatsTopic]=messageFlow;
+    },
+    addListener : function(listener){
+        this.connect();
+        this.listeners.push(listener);
+    }
+}
+
+var MessageFlow = {
+    update : function(flowStats){
+        this.currentSnapShot = flowStats.WMQIStatisticsAccounting.MessageFlow;
+        
+    },
+    updateCallbacks : [],
+    onUpdate : function(callback){
+        //TODO how to remove a callback?
+        this.updateCallbacks.push(callback);
+        //if this is the first callback, subscribe
+        if(updateCallbacks.length==1){
+            this.application.integrationServer.integrationNode.subscribe(this);            
+        }                        
+    }
+}
+
 
 var globalBusData;
 function getIntegrationBus(callback){
     d3.json("/apiv1/integrationbus?depth=7",function(error,root){
-        globalBusData=root;
-        console.dir(root);
-        globalBusData.update = function(brokerName,executionGroupName,applicationName,flowName,cpu){
-          this.integrationNodes.integrationNode.forEach(function(broker){
-              if(broker.name==brokerName)
-              {
-                  broker.executionGroups.executionGroup.forEach(function(executionGroup){
-                      if(executionGroup.name==executionGroupName)
-                      {
-                          executionGroup.applications.application.forEach(function(application){
-                              if(application.name==applicationName)
-                              {
-                                  application.messageFlows.messageFlow.forEach(function(messageFlow){
-                                      if(messageFlow.name==flowName)
-                                      {
-                                          messageFlow.cpu= cpu;
-                                      }
-                                  });
-                              }
-                          });                      
-                      }
-                  });
-              }
-          });
-        }
-        callback(error,root);
+        globalBusData=root;        
+        applyIntegrationBusPrototype(globalBusData);        
+        callback(error,root);        
     });
 }
 
 function applyIntegrationBusPrototype(bus){
+        
     
     bus.integrationNodes.integrationNode.forEach(applyIntegrationNodePrototype);
 }
 
 function applyIntegrationNodePrototype(node){
-    node.executionGroups.executionGroup.forEach(applyIntegrationServerPrototype);
+    //TODO this wont work on IE        
+    node.__proto__=IntegrationNode;
+
+    //TODO do this in a copy constructor for IntegarationNode object
+    node.flowsByTopic={};
+    if(node.executionGroups != undefined) {
+        node.executionGroups.executionGroup.forEach(function(integrationServer){
+            integrationServer.integrationNode=node;
+            applyIntegrationServerPrototype(integrationServer);
+        });
+    }
 }
 
 function applyIntegrationServerPrototype(integrationServer){
-    integrationServer.applications.application.forEach(applyApplicationPrototype);
+    integrationServer.applications.application.forEach(function (application){
+        application.integrationServer=integrationServer;
+        applyApplicationPrototype(application);
+    });
 }
 
 function applyApplicationPrototype(application){
-    application.messageFlows.messageFlow.forEach(applyMessageFlowPrototype);
+    application.messageFlows.messageFlow.forEach(function (messageFlow){
+        messageFlow.application=application;
+        application.integrationServer.integrationNode.registerFlow(messageFlow);
+        applyMessageFlowPrototype(messageFlow);
+        
+    });
 }
 
+
 function applyMessageFlowPrototype(messageFlow){
-    messageFlow.update  = function(metric,value){
-        this.metrics[metric]=value;
-    };    
+    messageFlow.__proto__=MessageFlow;
 }
 
 
@@ -108,9 +197,14 @@ function listenToStats(data,errCallback,successCallback){
         listener.client = new Messaging.Client(hostname, port, nextClientId());
         listener.client.onMessageArrived = function(message){
             var payloadObj = JSON.parse(message.payloadString); 
-            var result = successCallback(payloadObj);
-            if(result===false) {
-                listener.client.disconnect();
+            try{
+                var result = successCallback(payloadObj);
+                if(result===false) {
+                    listener.client.disconnect();
+                }
+            }catch(error){
+                console.dir(error);
+                alert("exception in onMessage: " + error.toString());
             }
         }
             
