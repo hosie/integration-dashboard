@@ -100,16 +100,23 @@ var IntegrationNode = {
 var MessageFlow = {
     update : function(flowStats){
         this.currentSnapShot = flowStats.WMQIStatisticsAccounting.MessageFlow;
+        this.historicStats.push(flowStats.WMQIStatisticsAccounting);
+        this.updateCallbacks.forEach(function(item){
+            item();
+        });
+
         
     },
-    updateCallbacks : [],
+    //updateCallbacks : [],
     onUpdate : function(callback){
         //TODO how to remove a callback?
         this.updateCallbacks.push(callback);
         //if this is the first callback, subscribe
-        if(updateCallbacks.length==1){
+        //TODO this is not necessary for now because every flows is "auto" subscribed
+        //may have to re-introduce this if performance is too bad
+        /*if(this.updateCallbacks.length==1){
             this.application.integrationServer.integrationNode.subscribe(this);            
-        }                        
+        }                        */
     }
 }
 
@@ -161,6 +168,8 @@ function applyApplicationPrototype(application){
 
 
 function applyMessageFlowPrototype(messageFlow){
+    messageFlow.historicStats=[];
+    messageFlow.updateCallbacks=[];
     messageFlow.__proto__=MessageFlow;
 }
 

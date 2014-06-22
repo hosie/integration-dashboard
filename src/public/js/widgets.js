@@ -113,17 +113,23 @@ registerWidgetFactory(["IntegrationNode","broker"],function(){
     };
 });
 
+function parseTime(time){
+    var parseDateFormat = d3.time.format("%H:%M:%S");
+    //strip off the microsecond
+    //d3 can only handle milliseconds but I can't be bothered rounding micro to mili, there is no point, easier to round to seconds
+    
+    var trimmedTime = time.substring(0,time.indexOf('.'));
+    return parseDateFormat.parse(trimmedTime);
 
+}
 registerWidgetFactory(["messageFlow"],function(){
     return {
           name:"Flow stats",            
           scalable:true,
           scrollable:false,
           height:200,
-          width:400,
-          draw:function(svg,data){
-
-            var throughputData=[];
+          width:600,
+          draw:function(svg,messageFlow){
             
             var x;
             var y;
@@ -148,12 +154,13 @@ registerWidgetFactory(["messageFlow"],function(){
               .orient("left");
 
            var line = d3.svg.line()
-              .x(function(d) { return x(d.time); })
-              .y(function(d) { return y(d.messages); })
+              .x(function(d) {                         
+                 return x(parseTime(d.MessageFlow.EndTime)); 
+              })
+              .y(function(d) {
+                 return y(d.MessageFlow.TotalInputMessages);
+              })
               .interpolate("basis");
-
-            x.domain(d3.extent(throughputData, function(d) { return d.time; }));
-            y.domain(d3.extent(throughputData, function(d) { return d.messages; }));
 
             xg = svg.append("g")
                 .attr("class", "x axis")
@@ -171,28 +178,16 @@ registerWidgetFactory(["messageFlow"],function(){
                 .text("Messages");
 
             
-            var path= svg.append("path")
-                .datum(throughputData)
-                .attr("class", "line")
-                .attr("d", line);
+            var path;
 
-            listenToStats(data,onError,function(payloadObj){//TODO should the util function maintain the array of historical data?
+            messageFlow.onUpdate(function(payloadObj){//TODO should the util function maintain the array of historical data?
 
-                var parseDateFormat = d3.time.format("%H:%M:%S");
-                //strip off the microsecond
-                //d3 can only handle milliseconds but I can't be bothered rounding micro to mili, there is no point, easier to round to seconds
-                var untrimmedTime = payloadObj.WMQIStatisticsAccounting.MessageFlow.EndTime;
-                var trimmedTime = untrimmedTime.substring(0,untrimmedTime.indexOf('.'));
+               
+                x.domain(d3.extent(messageFlow.historicStats, function(d) {                     
+                    return parseTime(d.MessageFlow.EndTime);
+                 }));
 
-                throughputData.push({
-                    time     : parseDateFormat.parse(trimmedTime),
-                    messages : payloadObj.WMQIStatisticsAccounting.MessageFlow.TotalInputMessages,
-                    obj      : payloadObj}
-                );
-
-                
-                x.domain(d3.extent(throughputData, function(d) { return d.time; }));
-                y.domain(d3.extent(throughputData, function(d) { return d.messages; }));
+                y.domain(d3.extent(messageFlow.historicStats, function(d) { return d.MessageFlow.TotalInputMessages; }));
 
                 xAxis(xg);
                 yAxis(yg);
@@ -202,7 +197,7 @@ registerWidgetFactory(["messageFlow"],function(){
                 }
 
                 path = svg.append("path")
-                    .datum(throughputData)
+                    .datum(messageFlow.historicStats)
                     .attr("class", "line")
                     .attr("d", line);
 
