@@ -216,61 +216,54 @@ registerWidgetFactory(["IntegrationServer","executionGroup"],function(){
         rootGroup:null,
         draw:function (svg,executionGroup){    
           this.svg=svg;
+          
           var me = this;
-          listenToStats(executionGroup,onError,function(stats){
-              me.onStats(stats);
-          });
-        },
-        onStats:function(stats){
-              
-          if(this.rootGroup!=null) {
-              
-              this.rootGroup.remove();
-          }
-          this.rootGroup = this.svg.append("g");
+          executionGroup.getResourceManagers(function(resourceManagers){
+              if(me.rootGroup!=null) {
+                  
+                  me.rootGroup.remove();
+              }
+              me.rootGroup = me.svg.append("g");
 
-          stats.ResourceStatistics.ResourceType.forEach(function(item){
-              item.type="resourceType"
-          });
-          var newResourceType = this.rootGroup.selectAll(".resourceType")//TODO should there be a naming convention for these classes so that they can be unique to the widget?  Or common?
-          .data(stats.ResourceStatistics.ResourceType)
-          .enter().append("g")        
-          .each(draggableElement);
+              var newResourceType = me.rootGroup.selectAll(".resourceType")//TODO should there be a naming convention for these classes so that they can be unique to the widget?  Or common?
+              .data(resourceManagers)
+              .enter().append("g")        
+              .each(draggableElement);
 
-          var widgetWidth = this.width;            
+              var widgetWidth = me.width;
 
-          newResourceType.append("rect")
-          .attr("class","resourceType")
-          .attr("width",100)
-          .attr("height",100)
-          .attr("x",function(d,i){
-              //TODO move this into a layout?
-              var myWidth=100;
-              return (i*myWidth) % widgetWidth;
-          })
-          .attr("y",function(d,i){
-              //TODO move this into a layout?
-              var myHeight=100;
-              var myWidth=100;
-              return myHeight * Math.round(( i*myWidth / widgetWidth)-0.5);
+              newResourceType.append("rect")
+              .attr("class","resourceType")
+              .attr("width",100)
+              .attr("height",100)
+              .attr("x",function(d,i){
+                  //TODO move this into a layout?
+                  var myWidth=100;
+                  return (i*myWidth) % widgetWidth;
+              })
+              .attr("y",function(d,i){
+                  //TODO move this into a layout?
+                  var myHeight=100;
+                  var myWidth=100;
+                  return myHeight * Math.round(( i*myWidth / widgetWidth)-0.5);
+              });
+              newResourceType.append("text")
+              .text(function(d){
+                  return d.name;
+              })
+              .attr("class","resourceTypeLabel")
+              .attr("x",function(d,i){
+                  var myWidth=100;
+                  return  3 + (i*myWidth) % widgetWidth;
+                  
+              })
+              .attr("y",function(d,i){
+                  //TODO move this into a layout?
+                  var myHeight=100;
+                  var myWidth=100;
+                  return 30 + ( myHeight * ( Math.round(( i*myWidth / widgetWidth)-0.5)));
+              });          
           });
-          newResourceType.append("text")
-          .text(function(d){
-              return d.name;
-          })
-          .attr("class","resourceTypeLabel")
-          .attr("x",function(d,i){
-              var myWidth=100;
-              return  3 + (i*myWidth) % widgetWidth;
-              
-          })
-          .attr("y",function(d,i){
-              //TODO move this into a layout?
-              var myHeight=100;
-              var myWidth=100;
-              return 30 + ( myHeight * ( Math.round(( i*myWidth / widgetWidth)-0.5)));
-          });
-          return false;//stop listening
         }
     };
 });

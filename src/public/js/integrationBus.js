@@ -22,7 +22,7 @@ function nextClientId(){
 //Define prototypes
 var IntegrationNode = {
     connected:false,
-    flowsByTopic:{},
+    topicListeners:{},
     listeners:[],    
     connect:function(/*callback*/){
               if(this.connected) {
@@ -54,6 +54,9 @@ var IntegrationNode = {
                       //var flowStatsTopic = "#";//$SYS/Broker/#/JSON/messageflows/#";
                       //var flowStatsTopic = "$SYS/Broker/MQNODE/Statistics/JSON/SnapShot/payments/applications/StandingOrder/messageflows/#";
                       thisObject.mqttClient.subscribe(flowStatsTopic,options);
+
+                      var resourceStatsTopic = "$SYS/Broker/" + thisObject.name + "/Statistics/JSON/Resource/#/";
+                      thisObject.mqttClient.subscribe(resourceStatsTopic,options);
                       //callback();                     
                   };
 
@@ -77,9 +80,9 @@ var IntegrationNode = {
     handleStats: function(message){
          try{
              var payloadObj = JSON.parse(message.payloadString);
-             
-             var flow = this.flowsByTopic[message.destinationName];
-             flow.update(payloadObj);
+             //TOOD - only one listener per topic for now.
+             var listener = this.topicListeners[message.destinationName];
+             listener.update(payloadObj);
              this.listeners.forEach(function(item){
                  item();
              });
@@ -88,12 +91,59 @@ var IntegrationNode = {
              alert("Error in handle stats: " + err.message + err.stack);
          }
     },
-    registerFlow : function(messageFlow){
-         this.flowsByTopic[messageFlow.flowStatsTopic]=messageFlow;
+    registerTopicListener : function(topic,listener){
+         this.connect();
+         this.topicListeners[topic]=listener;
     },
     addListener : function(listener){
         this.connect();
         this.listeners.push(listener);
+    }
+}
+
+var IntegrationServer = function(other,node){
+    var thisObject = this;
+    
+    Object.keys(other).forEach(function(key){
+        thisObject[key]=other[key];
+    });
+    //TODO also register for activity log
+    //TOOD create separate RM objects for these?
+    this.resourceStatsTopic = "$SYS/Broker/" + node.name + "/Statistics/JSON/Resource/" + this.name +"/";
+    node.registerTopicListener(this.resourceStatsTopic,this);
+    this.updateCallbacks=[];
+    this.oneTimeListeners=[];
+    this.update=function(payload){
+        console.log("update");
+    };
+    this.onUpdate = function(callback){
+        //TODO how to remove a callback?
+        this.updateCallbacks.push(callback);
+        //if this is the first callback, subscribe
+        //TODO this is not necessary for now because every flows is "auto" subscribed
+
+    };
+    this.update = function(resourceStats){
+        this.currentSnapShot = resourceStats;
+        //this.historicStats.push(flowStats.WMQIStatisticsAccounting);
+        this.updateCallbacks.forEach(function(item){
+            item();
+        });
+        this.oneTimeListeners.forEach(function(item){
+            item();
+        });
+        this.oneTimeListeners.length=0;
+
+    }
+    this.getResourceManagers = function(callback){
+        var thisObject = this;
+        this.oneTimeListeners.push(
+            function(){
+            thisObject.currentSnapShot.ResourceStatistics.ResourceType.forEach(function(item){
+              item.type="resourceType"
+            });
+            callback(thisObject.currentSnapShot.ResourceStatistics.ResourceType);
+        });
     }
 }
 
@@ -103,9 +153,7 @@ var MessageFlow = {
         this.historicStats.push(flowStats.WMQIStatisticsAccounting);
         this.updateCallbacks.forEach(function(item){
             item();
-        });
-
-        
+        });        
     },
     //updateCallbacks : [],
     onUpdate : function(callback){
@@ -141,10 +189,11 @@ function applyIntegrationNodePrototype(node){
     node.__proto__=IntegrationNode;
 
     //TODO do this in a copy constructor for IntegarationNode object
-    node.flowsByTopic={};
+    node.topicListeners={};
     if(node.executionGroups != undefined) {
-        node.executionGroups.executionGroup.forEach(function(integrationServer){
+        node.executionGroups.executionGroup.forEach(function(integrationServer,index){
             integrationServer.integrationNode=node;
+            node.executionGroups.executionGroup[index]=new IntegrationServer(integrationServer,node);
             applyIntegrationServerPrototype(integrationServer);
         });
     }
@@ -160,9 +209,8 @@ function applyIntegrationServerPrototype(integrationServer){
 function applyApplicationPrototype(application){
     application.messageFlows.messageFlow.forEach(function (messageFlow){
         messageFlow.application=application;
-        application.integrationServer.integrationNode.registerFlow(messageFlow);
-        applyMessageFlowPrototype(messageFlow);
-        
+        application.integrationServer.integrationNode.registerTopicListener(messageFlow.flowStatsTopic,messageFlow);
+        applyMessageFlowPrototype(messageFlow);        
     });
 }
 
