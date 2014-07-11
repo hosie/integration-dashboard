@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Mocha</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="mocha.css" />
+  </head>
+  <body>
+    <div id="mocha"></div>
+    <!-- prereqs -->
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css">  
+    <script src="//code.jquery.com/jquery-1.10.2.js"></script>  
+    <script src="//code.jquery.com/ui/1.10.4/jquery-ui.js"></script>  
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="/js/mqttws31.js"></script>
+
+    <!-- test prereqs-->
+    
+    <script src="./prereq/should.min.js"></script>
+    <script src="http://sinonjs.org/releases/sinon-1.10.2.js"></script>
+    
+
+    <!-- modules under test-->
+    <script src="/js/integrationBus.js"></script>
+    <script src="mocha.js"></script>
+    <script>mocha.setup('bdd')</script>
+    <script src="tests.js"></script>
+    <script>
+      mocha.run();
+    </script>
+  </body>
+</html>
