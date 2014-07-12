@@ -1,15 +1,25 @@
+var apiv1Stub;
+beforeEach(function(done){
+    apiv1Stub = APIv1Stub();
+    done();
+});
+
+afterEach(function(done){
+    apiv1Stub.restore();
+    done();
+});
 
 describe('IntegrationBus', function(){
-
-  it.skip('should not barf',function(done){
+    it('should not barf',function(done){
       getIntegrationBus(function(error,integrationBus){
+            integrationBus.should.have.property('type','IntegrationBus');
             if(error==null) {
                 done();          
             }else{
                 throw error;
             }
-      });
-  });
+      });      
+    });
 });
 
 
@@ -28,7 +38,7 @@ describe('IntegrationNode', function(){
   });
 
   it.skip('should be an IntegrationNode',function(){      
-      integrationNode.should.have.property('type','broker');      
+      integrationNode.should.have.property('type','IntegrationNode');
   });  
 
 

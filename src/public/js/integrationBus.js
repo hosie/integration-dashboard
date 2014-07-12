@@ -11,3 +11,11 @@ Author John Hosie
       John Hosie - initial implementation 
 */
 
+function getIntegrationBus(callback){
+    $.getJSON('/apiv1/integrationbus?depth=7',function(root){
+        callback(null,root);                    
+    }).fail(function(error){
+        callback(callback,null);
+    });
+}
+
