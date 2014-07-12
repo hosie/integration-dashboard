@@ -145,7 +145,7 @@ var IntegrationServer = function(other,node){
     this.resourceStatsEventHandlers=$.Callbacks();
     var thisObject = this;
     node.registerTopicListener(this.resourceStatsTopic,function(publication){
-       thisObject.resourceStatsEventHandlers.fire(publication);       
+       thisObject.resourceStatsEventHandlers.fire.call(this,publication);
     });
     this.onUpdate = function(callback){
         //TODO how to remove a callback?
@@ -197,11 +197,17 @@ var MessageFlow = {
     update : function(flowStats){
         this.currentSnapShot = flowStats.WMQIStatisticsAccounting.MessageFlow;
         this.historicStats.push(flowStats.WMQIStatisticsAccounting);
+
+        //TODO remove 
         this.updateCallbacks.forEach(function(item){
             item();
         });        
+        //END of remove        
+
+        this.flowStatsEventHandlers.fire(flowStats);
     },
     //updateCallbacks : [],
+    //TODO remove this method
     onUpdate : function(callback){
         //TODO how to remove a callback?
         this.updateCallbacks.push(callback);
@@ -211,6 +217,25 @@ var MessageFlow = {
         /*if(this.updateCallbacks.length==1){
             this.application.integrationServer.integrationNode.subscribe(this);            
         }                        */
+    },
+    /**
+     *  Registers a listener for events
+     * @method on 
+     * @param {String} eventType the name of the event being 
+     *        listened for. Possible values are 'resourceStats'
+     * 
+     * @param {Function} listener function that is called when the 
+     *        event fires.  Inside the function this refers to the
+     *        MessageFlow object that emitted the event.
+     *  
+     * Arguments passed to that function depend on the eventType.
+     *            messageFlowStats - listener(currentSnapshot) 
+     *  
+     */
+    on : function(eventType,callback){
+         if(eventType=='messageFlowStats') {
+             this.flowStatsEventHandlers.add(callback);
+         }
     }
 }
 
@@ -255,13 +280,16 @@ function applyIntegrationServerPrototype(integrationServer){
 function applyApplicationPrototype(application){
     application.messageFlows.messageFlow.forEach(function (messageFlow){
         messageFlow.application=application;
-        application.integrationServer.integrationNode.registerTopicListener(messageFlow.flowStatsTopic,messageFlow);
+        application.integrationServer.integrationNode.registerTopicListener(messageFlow.flowStatsTopic,function(publication){
+            messageFlow.update(publication);
+        });
         applyMessageFlowPrototype(messageFlow);        
     });
 }
 
 
 function applyMessageFlowPrototype(messageFlow){
+    messageFlow.flowStatsEventHandlers=$.Callbacks();
     messageFlow.historicStats=[];
     messageFlow.updateCallbacks=[];
     messageFlow.__proto__=MessageFlow;

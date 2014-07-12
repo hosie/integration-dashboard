@@ -84,7 +84,7 @@ registerWidgetFactory(["IntegrationNode","broker"],function(){
                 
                 newNode.append("title")
                     .text(function(d) { 
-                      return d.name + (d.type !== "messageFlow" ? "" : ": " + format(d.cpu)); 
+                      return d.name + (d.type !== "messageFlow" ? "" : ": " + format(d.currentSnapShot.TotalCPUTime)); 
                     });
 
                 newNode.append("circle")            
