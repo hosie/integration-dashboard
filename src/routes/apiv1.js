@@ -46,17 +46,16 @@ function initNodes(){
         };
         var resultObject;
         var resultString="";
-        console.log("requesting from %j",JSON.stringify(options));
+        
         var req = http.request(options, function(res) {
             res.setEncoding('utf8');
             res.on('data', function (chunk) {            
-                console.log("on data" + chunk);
+        
                 resultString=resultString+chunk;
             });
             res.on('end', function () {            
-                console.log("on end");
-                var resultObject = JSON.parse(resultString);
-                console.dir(resultObject);
+        
+                var resultObject = JSON.parse(resultString);        
                 item.name=resultObject.name;
                 //TODO drill into properites and get desc etc...
             });

@@ -17,10 +17,9 @@ var httpProxy = require('http-proxy');
 module.exports = function(connection){
     
     var router = express.Router();
-    console.log("creating proxy");
-    var proxyServer = httpProxy.createProxyServer({target:"http://" + connection.host + ":" + connection.port});
-
-    console.log("using proxy");
+    var targetUrl = "http://" + connection.host + ":" + connection.port;
+    console.log("creating proxy for " + targetUrl);
+    var proxyServer = httpProxy.createProxyServer({target:targetUrl});
     router.use('/',function(req,res){                        
 
         console.log("proxying request %j",req.url);

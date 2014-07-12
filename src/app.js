@@ -16,6 +16,8 @@ var proxy = require('./routes/proxy.js');
 var apiv1 = require('./routes/apiv1.js');
 var fs = require('fs');
 
+var testFlag = '--test';
+
 fs.readFile('hosts.json', function (err, data) {
   if (err) throw err;
   
@@ -33,8 +35,20 @@ fs.readFile('hosts.json', function (err, data) {
 
   app.use("/apiv1",apiv1(hosts));
 
-  //all static html content is in public
+  if(process.argv.indexOf(testFlag)>-1)
+  {
+    //add a root for the front end test pages
+    console.log('Test mode active');
+    var testDir = __dirname + "/../test/front-end";
+    console.log("serving front end tests from " + testDir);
+    app.use("/test",express.static(testDir));
+  }
+
+  //all other static html content is in public
   app.use("/",express.static(__dirname + "/public"));
+  
+  
+
 
   app.listen(3002);
   console.log('Listening on port 3002');
