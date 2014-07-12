@@ -146,6 +146,7 @@ var IntegrationServer = function(other,node){
     var thisObject = this;
     node.registerTopicListener(this.resourceStatsTopic,function(publication){
        thisObject.resourceStatsEventHandlers.fire.call(this,publication);
+       thisObject.update(publication);
     });
     this.onUpdate = function(callback){
         //TODO how to remove a callback?
