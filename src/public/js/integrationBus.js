@@ -33,7 +33,7 @@ var IntegrationNode = {
 
                   this.mqttClient.onMessageArrived = function(message){                      
                       thisObject.handleStats(message);
-                  }
+                  };
 
                   this.mqttClient.onConnectionLost =function(response){
                       //TODO error handling, should really call errCallback?
@@ -81,19 +81,32 @@ var IntegrationNode = {
          try{
              var payloadObj = JSON.parse(message.payloadString);
              //TOOD - only one listener per topic for now.
-             var listener = this.topicListeners[message.destinationName];
-             listener.update(payloadObj);
-             this.listeners.forEach(function(item){
-                 item();
-             });
-             //TODO if resource stats...
+             var listeners = this.topicListeners[message.destinationName];
+             if(listeners == undefined) {
+                 console.log("topic not subscribed to " + message.destinationName);
+                 console.log(message.payloadString);
+                 console.dir(payloadObj);
+
+             }else{
+                 listeners.fire(payloadObj);
+                 this.listeners.forEach(function(item){
+                     item();
+                 });
+             }             
+             
          }catch(err){
+             console.dir(err);
              alert("Error in handle stats: " + err.message + err.stack);
          }
     },
     registerTopicListener : function(topic,listener){
          this.connect();
-         this.topicListeners[topic]=listener;
+         var callbacks = this.topicListeners[topic];
+         if(callbacks == undefined) {
+             callbacks=$.Callbacks();
+             this.topicListeners[topic]=callbacks;
+         }
+         callbacks.add(listener);
     },
     addListener : function(listener){
         this.connect();
@@ -104,25 +117,12 @@ var IntegrationNode = {
 var IntegrationServer = function(other,node){
     var thisObject = this;
     
+    
     Object.keys(other).forEach(function(key){
         thisObject[key]=other[key];
     });
     //TODO also register for activity log
     //TOOD create separate RM objects for these?
-    this.resourceStatsTopic = "$SYS/Broker/" + node.name + "/Statistics/JSON/Resource/" + this.name +"/";
-    node.registerTopicListener(this.resourceStatsTopic,this);
-    this.updateCallbacks=[];
-    this.oneTimeListeners=[];
-    this.update=function(payload){
-        console.log("update");
-    };
-    this.onUpdate = function(callback){
-        //TODO how to remove a callback?
-        this.updateCallbacks.push(callback);
-        //if this is the first callback, subscribe
-        //TODO this is not necessary for now because every flows is "auto" subscribed
-
-    };
     this.update = function(resourceStats){
         this.currentSnapShot = resourceStats;
         //this.historicStats.push(flowStats.WMQIStatisticsAccounting);
@@ -133,8 +133,28 @@ var IntegrationServer = function(other,node){
             item();
         });
         this.oneTimeListeners.length=0;
-
     }
+
+    this.resourceStatsTopic = "$SYS/Broker/" + node.name + "/Statistics/JSON/Resource/" + this.name +"/";
+
+    
+
+    this.updateCallbacks=[];
+    this.stateChangeCallbacks=[];
+    this.oneTimeListeners=[];
+    this.resourceStatsEventHandlers=$.Callbacks();
+    var thisObject = this;
+    node.registerTopicListener(this.resourceStatsTopic,function(publication){
+       thisObject.resourceStatsEventHandlers.fire(publication);       
+    });
+    this.onUpdate = function(callback){
+        //TODO how to remove a callback?
+        this.updateCallbacks.push(callback);
+        //if this is the first callback, subscribe
+        //TODO this is not necessary for now because every flows is "auto" subscribed
+
+    };
+    
     this.getResourceManagers = function(callback){
         var thisObject = this;
         this.oneTimeListeners.push(
@@ -145,6 +165,32 @@ var IntegrationServer = function(other,node){
             callback(thisObject.currentSnapShot.ResourceStatistics.ResourceType);
         });
     }
+    /**
+     *  Registers a listener for events
+     * @method on 
+     * @param {String} eventType the name of the event being 
+     *        listened for. Possible values are 'resourceStats'
+     * 
+     * @param {Function} listener function that is called when the 
+     *        event fires.  Inside the function this refers to the
+     *        IntegrationServer object that emitted the event.
+     *  
+     * Arguments passed to that function depend on the eventType.
+     *            resourceStats - listener(currentSnapshot) 
+     *  
+     */
+    this.on = function(eventType,callback){
+         if(eventType=='resourceStats') {
+             this.resourceStatsEventHandlers.add(callback);
+         }
+    }
+
+    /** 
+     * This event fires whenever a new snapshot of resource 
+     * statistics is published. 
+     * @event resourceStats 
+     * @param {Object} currentSnapshot 
+     */
 }
 
 var MessageFlow = {

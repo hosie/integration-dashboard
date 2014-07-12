@@ -40,14 +40,14 @@ describe('IntegrationNode', function(){
 describe('IntegrationServer', function(){
   this.timeout(60000);
 
-  it.skip('publishes resource stats',function(done){
+  it('publishes resource stats',function(done){
       getIntegrationBus(function(error,integrationBus){
           var integrationServer = integrationBus.integrationNodes.integrationNode[2].executionGroups.executionGroup[1];
           
           integrationServer.on('resourceStats',function(statsSnapShot){              
               statsSnapShot.should.have.property('ResourceStatistics');
               statsSnapShot.ResourceStatistics.should.have.property('ResourceType');
-              statsSnapShot.ResourceStatistics.ResourceType.should.be.instanceof(Array).and.should.have.length(21);
+              statsSnapShot.ResourceStatistics.ResourceType.should.be.instanceof(Array);
               done();
           });
       });
@@ -57,14 +57,15 @@ describe('IntegrationServer', function(){
 
       getIntegrationBus(function(error,integrationBus){
           var integrationServer = integrationBus.integrationNodes.integrationNode[2].executionGroups.executionGroup[0];
-            integrationServer.stop(
+          integrationServer.on('stop',function(){
+              integrationServer.should.have.property('isRunning',false);
+              done();
+          });
+          integrationServer.stop(
               function(err){
                 throw err;
               },
               function(){
-                   console.dir(root);
-                integrationServer.should.have.property('isRunning',false);
-                done();
               });
       });
   });
@@ -74,7 +75,7 @@ describe('IntegrationServer', function(){
       getIntegrationBus(function(error,root){
           
           var integrationServer = root.integrationNodes.integrationNode[2].executionGroups.executionGroup[0];
-          integrationServer.onStart(function(){
+          integrationServer.on('start',function(){
               integrationServer.should.have.property('isRunning',true);
               done();
           });
@@ -82,8 +83,7 @@ describe('IntegrationServer', function(){
               function(err){
                 throw err;
               },
-              function(){                
-                
+              function(){                                
               });
       });
   });
