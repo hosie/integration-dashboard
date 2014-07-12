@@ -13,6 +13,7 @@ describe('IntegrationBus', function(){
     it('should not barf',function(done){
       getIntegrationBus(function(error,integrationBus){
             integrationBus.should.have.property('type','IntegrationBus');
+            integrationBus.should.be.instanceof(IntegrationBus);
             if(error==null) {
                 done();          
             }else{
@@ -32,13 +33,16 @@ describe('IntegrationNode', function(){
             if(error!=null) {
                 throw error;
             }
-            integrationNode=integrationBus.integrationNodes.integrationNode[0];
+            integrationNode=integrationBus.integrationNodes[0];
             done();
         });    
   });
 
-  it.skip('should be an IntegrationNode',function(){      
+  it('should be an IntegrationNode',function(){      
       integrationNode.should.have.property('type','IntegrationNode');
+      integrationNode.should.have.property('name');
+      integrationNode.should.be.instanceof(IntegrationNode);
+
   });  
 
 
@@ -73,10 +77,17 @@ describe('IntegrationServer', function(){
             if(error!=null) {
                 throw error;
             }
-            integrationServer = integrationBus.integrationNodes.integrationNode[0].executionGroups.executionGroup[0];
+            integrationServer = integrationBus.integrationNodes[0].integrationServers[0];
             done();
         });    
   });
+
+  it('should be an IntegrationServer',function(){      
+      integrationServer.should.have.property('type','IntegrationServer');
+      integrationServer.should.have.property('name');
+      integrationServer.should.be.instanceof(IntegrationServer);
+
+  });  
 
   it.skip('publishes resource stats',function(done){
       
@@ -122,6 +133,29 @@ describe('IntegrationServer', function(){
   });
 });
 
+
+describe('Application', function(){
+  this.timeout(25000);
+
+  var application;
+  beforeEach(function(done){
+      getIntegrationBus(function(error,integrationBus){
+          if(error!=null) {
+              throw error;
+          }
+          application = integrationBus.integrationNodes[0].integrationServers[0].applications[0];
+          done();
+      });    
+  });
+
+
+  it('should be an Application',function(){      
+      application.should.have.property('type','Application');
+      application.should.have.property('name');
+      application.should.be.instanceof(Application);
+  });  
+});
+
 describe('MessageFlow', function(){
   this.timeout(25000);
 
@@ -131,14 +165,15 @@ describe('MessageFlow', function(){
           if(error!=null) {
               throw error;
           }
-          messageFlow = root.integrationNodes.integrationNode[0].executionGroups.executionGroup[0].applications.application[0].messageFlows.messageFlow[0];
+          messageFlow = integrationBus.integrationNodes[0].integrationServers[0].applications[0].messageFlows[0];
           done();
       });    
   });
 
-
-  it.skip('get an instance of message flow',function(done){      
-      messageFlow.should.be.instanceOf(MessageFlow);
+  it('get an instance of message flow',function(){      
+      messageFlow.should.have.property('type','MessageFlow');
+      messageFlow.should.have.property('name');
+      messageFlow.should.be.instanceOf(MessageFlow);      
   });
 
   it.skip('publishes flow stats',function(done){
