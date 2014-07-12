@@ -9,7 +9,7 @@ This is still early days in the development of integration-dashboard but to get 
 ## Try it
 ### Install
 1. Download and install node.js - http://nodejs.org/download/
-2. Download - [integration-dashboard] (https://github.com/hosie/integration-dashboard/archive/master.zip)  and unzip
+2. Download - [integration-dashboard] (https://github.com/hosie/integration-dashboard/archive/v0.1.zip)  and unzip
 3. open a console, add node.js to your PATH, cd to the directory where you unzipped in (2). cd to src ( the directory that contains app.js and package.json - among other things)
 4. install the prereqs ``` npm install ```
 5. edit hosts.JSON.  For each broker, provide host, port ( web admin port) and mqtt ( port for MQTT websockets).
