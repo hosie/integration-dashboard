@@ -67,6 +67,48 @@ function APIv1Stub(){
     var stub = sinon.fakeServer.create();
     stub.respondWith("GET", "/apiv1/integrationbus?depth=7",integrationBus);    
     stub.autoRespond=true;
+    
     return stub;
 }
+
+Messaging = (function(){
+    function client(){
+        console.log("constructor");
+        function publish(){
+            console.log("publish");
+            var message = {
+                    destinationName :"$SYS/Broker/TESTNODE_Administrator/Statistics/JSON/SnapShot/default/applications/Hosie_HTTP one-way/messageFlows/RecordDistributor",
+                    payloadString   : JSON.stringify(
+                      {
+                        WMQIStatisticsAccounting : {
+                            RecordType:"SnapShot",
+                            RecordCode:"Snapshot",
+                            MessageFlow:{
+                                TotalCPUTime:12345
+                            }
+                        }
+                      })
+                    };
+            this.onMessageArrived(message);
+        }
+
+        function connect(options){
+            console.log("connect");
+            setTimeout(options.onSuccess,100);
+            setInterval($.proxy(publish,this),5000);
+            
+        }
+        this.connect = connect;
+
+        function subscribe(topic){
+            console.log("subscribe:" + topic);
+        }
+        this.subscribe = subscribe;
+    }
+    return {
+        Client:client
+    }
+})(window);
+
+
 

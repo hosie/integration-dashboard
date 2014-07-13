@@ -1,4 +1,4 @@
-var apiv1Stub;
+/*var apiv1Stub;
 beforeEach(function(done){
     apiv1Stub = APIv1Stub();
     done();
@@ -8,7 +8,7 @@ afterEach(function(done){
     apiv1Stub.restore();
     done();
 });
-
+*/
 describe('IntegrationBus', function(){
     it('should not barf',function(done){
       getIntegrationBus(function(error,integrationBus){
@@ -176,12 +176,16 @@ describe('MessageFlow', function(){
       messageFlow.should.be.instanceOf(MessageFlow);      
   });
 
-  it.skip('publishes flow stats',function(done){
+  it('publishes flow stats',function(done){
       
       messageFlow.on('messageFlowStats',function(statsSnapShot){
           statsSnapShot.should.have.property('WMQIStatisticsAccounting');
           statsSnapShot.WMQIStatisticsAccounting.should.have.property('MessageFlow');              
           done();
       });                
+  });
+
+  it.skip('should hanlde mqtt failures',function(){      
+      
   });
 });
