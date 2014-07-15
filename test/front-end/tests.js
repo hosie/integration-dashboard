@@ -11,7 +11,7 @@ afterEach(function(done){
 */
 describe('IntegrationBus', function(){
     it('should not barf',function(done){
-      getIntegrationBus(function(error,integrationBus){
+      Integration.getIntegrationBus(function(error,integrationBus){
             integrationBus.should.have.property('type','IntegrationBus');
             integrationBus.should.be.instanceof(IntegrationBus);
             if(error==null) {
@@ -20,7 +20,7 @@ describe('IntegrationBus', function(){
                 throw error;
             }
       });      
-    });
+    });    
 });
 
 
@@ -29,7 +29,7 @@ describe('IntegrationNode', function(){
   this.timeout(60000);
   var integrationNode;
   beforeEach(function(done){
-        getIntegrationBus(function(error,integrationBus){
+        Integration.getIntegrationBus(function(error,integrationBus){
             if(error!=null) {
                 throw error;
             }
@@ -73,7 +73,7 @@ describe('IntegrationServer', function(){
 
   var integrationServer;
   beforeEach(function(done){
-        getIntegrationBus(function(error,integrationBus){
+        Integration.getIntegrationBus(function(error,integrationBus){
             if(error!=null) {
                 throw error;
             }
@@ -139,7 +139,7 @@ describe('Application', function(){
 
   var application;
   beforeEach(function(done){
-      getIntegrationBus(function(error,integrationBus){
+      Integration.getIntegrationBus(function(error,integrationBus){
           if(error!=null) {
               throw error;
           }
@@ -161,7 +161,7 @@ describe('MessageFlow', function(){
 
   var messageFlow;
   beforeEach(function(done){
-      getIntegrationBus(function(error,integrationBus){
+      Integration.getIntegrationBus(function(error,integrationBus){
           if(error!=null) {
               throw error;
           }
