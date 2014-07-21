@@ -10,6 +10,7 @@ afterEach(function(done){
 });
 */
 describe('IntegrationBus', function(){
+    this.timeout(30000);
     it('should not barf',function(done){
       Integration.getIntegrationBus(function(error,integrationBus){
             integrationBus.should.have.property('type','IntegrationBus');
@@ -26,7 +27,7 @@ describe('IntegrationBus', function(){
 
 
 describe('IntegrationNode', function(){
-  this.timeout(60000);
+  this.timeout(30000);
   var integrationNode;
   beforeEach(function(done){
         Integration.getIntegrationBus(function(error,integrationBus){
@@ -47,37 +48,35 @@ describe('IntegrationNode', function(){
 
 
   /* integration node fires an event every time one of its servers get a resource stats event , or their flows get a flow stats event*/
-  it.skip('publishes every snapshot',function(done){
-      
-      var seenSomeResourceStats=false;
-      var seenSomeFlowStats=false;
-      integrationNode.on('stats',function(stats){
-          if(stats.ResourceStatistics != undefined) {
-              seenSomeResourceStats=true;
-          }
-          if(stats.MessageFlowStatistics != undefined) {
-              seenSomeFlowStats=true;
-          }
-          if(seenSomeResourceStats && seenSomeFlowStats) {
+  it('publishes every message flow stats snapshot',function(done){      
+      integrationNode.on('messageFlowStats',function(stats){
+          if(stats.WMQIStatisticsAccounting != undefined) {
               done();
           }
+      });      
+  });
 
-      });
-      done();                
-  });  
-
+  it.skip('publishes every resource stats snapshot',function(done){      
+      integrationNode.on('resourceStats',function(stats){
+          if(stats.ResourceStatistics != undefined) {
+              done();
+          }
+      });      
+  });
 });
 
 describe('IntegrationServer', function(){
   this.timeout(60000);
 
   var integrationServer;
+  var integrationNode;
   beforeEach(function(done){
         Integration.getIntegrationBus(function(error,integrationBus){
             if(error!=null) {
                 throw error;
             }
-            integrationServer = integrationBus.integrationNodes[0].integrationServers[0];
+            integrationNode=integrationBus.integrationNodes[0];
+            integrationServer = integrationNode.integrationServers[0];
             done();
         });    
   });
@@ -131,6 +130,10 @@ describe('IntegrationServer', function(){
           });
       
   });
+
+  it('can get integration node',function(){
+      integrationServer.getIntegrationNode().should.equal(integrationNode);
+  });
 });
 
 
@@ -138,12 +141,14 @@ describe('Application', function(){
   this.timeout(25000);
 
   var application;
+  var integrationNode;
   beforeEach(function(done){
       Integration.getIntegrationBus(function(error,integrationBus){
           if(error!=null) {
               throw error;
           }
-          application = integrationBus.integrationNodes[0].integrationServers[0].applications[0];
+          integrationNode=integrationBus.integrationNodes[0];
+          application = integrationNode.integrationServers[0].applications[0];
           done();
       });    
   });
@@ -154,18 +159,24 @@ describe('Application', function(){
       application.should.have.property('name');
       application.should.be.instanceof(Application);
   });  
+
+  it('can get integration node',function(){
+      application.getIntegrationNode().should.equal(integrationNode);
+  });
 });
 
 describe('MessageFlow', function(){
   this.timeout(25000);
 
   var messageFlow;
+  var integrationNode;
   beforeEach(function(done){
       Integration.getIntegrationBus(function(error,integrationBus){
           if(error!=null) {
               throw error;
           }
-          messageFlow = integrationBus.integrationNodes[0].integrationServers[0].applications[0].messageFlows[0];
+          integrationNode=integrationBus.integrationNodes[0];
+          messageFlow = integrationNode.integrationServers[0].applications[0].messageFlows[0];
           done();
       });    
   });
@@ -187,5 +198,9 @@ describe('MessageFlow', function(){
 
   it.skip('should hanlde mqtt failures',function(){      
       
+  });
+
+  it('can get integration node',function(){
+      messageFlow.getIntegrationNode().should.equal(integrationNode);
   });
 });

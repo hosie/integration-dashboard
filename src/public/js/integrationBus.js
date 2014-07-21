@@ -20,11 +20,18 @@ Integration = (function(){
    * @constructor 
    */
   var PubSub = function(integrationNodeName,host,port){
-      this.integrationNodeName = integrationNodeName;
+      this.integrationNodeName  = integrationNodeName;
       this.mqttClient = new Messaging.Client(host, port, "i-d:"+integrationNodeName.substring(0,18));
 
       /** map of topic names to jquery Callbacks objects */
-      this.subscriberCallbacks={};    
+      this.subscriberCallbacks={};   
+      
+      /** callbacks who are interested in flow stats from any flow */
+      this.flowStatsCallbacks =null;
+
+      /** callbacks who are interested in resource stats from any
+       *  server */
+      this.resourceStatsCallbacks =null;
 
       /**
        * Register for callback on a specific topic.  Wildcards are not 
@@ -33,7 +40,15 @@ Integration = (function(){
        * @name on 
        * @private 
        * 
-       * @param topic {String}
+       * @param topic {String} name of topic. In general, wildcards 
+       *              are not supported. The only exception is the
+       *              following 2 special wildcards
+       *                 $SYS/Broker/#/Statistics/JSON/SnapShot/#
+       *                 (flowstats)
+       *  
+       *                 $SYS/Broker/#/Statistics/JSON/Resource/#
+       *                 (resourceStats)
+       *  
        * @param callback {Function} callback to be invoked when a 
        *                 message is published on the specified topic.
        *                 callback takes a single argument which is an
@@ -43,26 +58,51 @@ Integration = (function(){
        *  
        */
       function on(topic,callback){
-          if(this.subscriberCallbacks[topic]==undefined) {
-              this.subscriberCallbacks[topic]=$.Callbacks();
+          //TODO is it more efficient just to create a new client connection for each wildcard subscription?
+          if(topic==="$SYS/Broker/#/Statistics/JSON/SnapShot/#") {
+              if(this.flowStatsCallbacks===null){
+                  this.flowStatsCallbacks=$.Callbacks();
+              }
+              this.flowStatsCallbacks.add(callback);
+          }else if(topic==="$SYS/Broker/#/Statistics/JSON/Resource/#"){
+              if(this.resourceStatsCallbacks===null){
+                  this.resourceStatsCallbacks=$.Callbacks();
+              }
+              this.resourceStatsCallbacks.add(callback);
+          }else{
+              if(this.subscriberCallbacks[topic]===undefined) {
+                  this.subscriberCallbacks[topic]=$.Callbacks();
+              }
+              this.subscriberCallbacks[topic].add(callback);
           }
-          this.subscriberCallbacks[topic].add(callback);
       }
       this.on=on;
 
       function onMessageArrived(message){
           var topicString = message.destinationName;
           var callbacks = this.subscriberCallbacks[topicString];
-          if(callbacks) {
-               payloadObj= JSON.parse(message.payloadString);            
+          var payloadObj= JSON.parse(message.payloadString);            
+          if(callbacks) {               
                callbacks.fire(payloadObj);
-          }        
+          }
+          if(this.flowStatsCallbacks!=null){
+              var flowStatsHLQ = "$SYS/Broker/" + this.integrationNodeName +"/Statistics/JSON/SnapShot";
+              if(topicString.substring(0,flowStatsHLQ.length)==flowStatsHLQ) {
+                  this.flowStatsCallbacks.fire(payloadObj);
+              }
+          }
+          if(this.resourceStatsCallbacks!=null){
+              var resourceStatsHLQ = "$SYS/Broker/" + this.integrationNodeName +"/Statistics/JSON/Resource";
+              if(topicString.substring(0,resourceStatsHLQ.length)==resourceStatsHLQ) {
+                  this.resourceStatsCallbacks.fire(payloadObj);
+              }
+          }
       }
       this.mqttClient.onMessageArrived = $.proxy(onMessageArrived,this);
 
       function connect(callback){        
           this.mqttClient.onConnectionLost = function(response){ 
-              onError("lost connection to MQTT",response);
+              Integration.onError("lost connection to MQTT",response);
           };
           var connectOptions = {
               timeout:5,
@@ -122,6 +162,7 @@ Integration = (function(){
   }
 
   function onError(message,error){
+          console.log("onError");
           if(error instanceof String) {
               console.log(message + " : " + error)
           }else{
@@ -179,6 +220,8 @@ Integration = (function(){
       this.integrationServers=[];
       this.host = other.host;
       this.mqtt = other.mqtt;
+      this.flowStatsEventHandlers=null;
+      this.resourceStatsEventHandlers=null;
       this.pubSub = new PubSub( this.name,this.host,this.mqtt);
       this.pubSub.connect(
           function(error){
@@ -190,6 +233,42 @@ Integration = (function(){
       other.executionGroups.executionGroup.forEach(function(nextIntegrationServer){
           this.integrationServers.push(new IntegrationServer(nextIntegrationServer,this));
       },this);
+
+       /**
+       *  Registers a listener for events
+       * @method on 
+       * @param {String} eventType the name of the event being 
+       *        listened for. Possible values are 'messageFlowStats'.
+       * 
+       * @param {Function} listener function that is called when the 
+       *        event fires.  Inside the function this refers to the
+       *        IntegrationNode object that emitted the event.
+       *  
+       * Arguments passed to that function depend on the eventType.
+       *            messageFlowStats - listener(currentSnapshot) 
+       *  
+       */
+      function on(eventType,callback){
+           if(eventType=='messageFlowStats') {
+               if(this.flowStatsEventHandlers==null) {
+                   this.flowStatsEventHandlers=$.Callbacks();
+                   this.pubSub.on("$SYS/Broker/#/Statistics/JSON/SnapShot/#",$.proxy(function(snapShot){
+                       this.flowStatsEventHandlers.fire(snapShot);
+                   },this));
+               }
+               this.flowStatsEventHandlers.add(callback);
+           }else if(eventType=='resourceStats') {
+               if(this.resourceStatsEventHandlers==null) {
+                   this.resourceStatsEventHandlers=$.Callbacks();
+                   this.pubSub.on("$SYS/Broker/#/Statistics/JSON/Resource/#",$.proxy(function(snapShot){
+                       this.resourceStatsEventHandlers.fire(snapShot);
+                   },this));
+               }
+               this.resourceStatsEventHandlers.add(callback);
+           }
+      }
+      this.on=on;
+
       
   };
 
@@ -309,7 +388,6 @@ Integration = (function(){
   return{
       getIntegrationBus : getIntegrationBus
   }
-
 
 })();
 
