@@ -84,6 +84,7 @@ function getIntegrationBus(request,reply){
     var replyObject={
         type:"IntegrationBus",
         integrationNodes:{
+            type:"integrationNodes",
             uri:"/integrationbus/integrationnodes",
             integrationNode:[]
         }
@@ -127,14 +128,24 @@ function getIntegrationBus(request,reply){
               console.log("on end");
               var resultObject = JSON.parse(resultString);
               console.dir(resultObject);
-              nextNode.type = "broker";
-              nextNode.executionGroups=resultObject;
-              //enrich the object with topic names for flow stats
-              nextNode.executionGroups.executionGroup.forEach(function(executionGroup){
-                  executionGroup.applications.application.forEach(function(application){
+              nextNode.type = "integrationNode";
+
+              nextNode.integrationServers=resultObject;             
+
+              nextNode.integrationServers.type="integrationServers";
+              nextNode.integrationServers.integrationServer = nextNode.integrationServers.executionGroup;
+              delete(nextNode.integrationServers.executionGroup);
+              
+              nextNode.integrationServers.integrationServer.forEach(function(integrationServer){
+
+                  //rename the type of the objects
+                  integrationServer.type="integrationServer";
+
+                  //drill down and enrich the flow objects with topic names for flow stats
+                  integrationServer.applications.application.forEach(function(application){
                       application.messageFlows.messageFlow.forEach(function(messageFlow){
                           var topic="$SYS/Broker/" + nextNode.name +
-                               "/Statistics/JSON/SnapShot/" + executionGroup.name +
+                               "/Statistics/JSON/SnapShot/" + integrationServer.name +
                                "/applications/" + application.name +
                                "/messageflows/" + messageFlow.name;
                           messageFlow.flowStatsTopic = topic;
@@ -143,6 +154,10 @@ function getIntegrationBus(request,reply){
                   
               });
               
+
+
+
+
               remainingRequest--;       
               console.log(remainingRequest + " remaining");
               if(remainingRequest == 0) {

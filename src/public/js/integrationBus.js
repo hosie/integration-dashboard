@@ -230,7 +230,7 @@ Integration = (function(){
               }        
       });
 
-      other.executionGroups.executionGroup.forEach(function(nextIntegrationServer){
+      other.integrationServers.integrationServer.forEach(function(nextIntegrationServer){
           this.integrationServers.push(new IntegrationServer(nextIntegrationServer,this));
       },this);
 

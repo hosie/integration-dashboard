@@ -3,17 +3,18 @@
     var integrationBus = JSON.stringify({
       type: "IntegrationBus",
       integrationNodes: {
+        type: "integrationNodes",
         uri: "/integrationbus/integrationnodes",
         integrationNode: [
           {
             name: "TESTNODE_Administrator",
             host: "somehost.ibm.com",
             mqtt: 1883,
-            type: "broker",
-            executionGroups: {
+            type: "integrationNode",
+            integrationServers: {
               uri: "/apiv1/executiongroups",
               type: "executionGroups",
-              executionGroup: [
+              integrationServer: [
                 {
                   type: "executionGroup",
                   uri: "/apiv1/executiongroups/default",                      

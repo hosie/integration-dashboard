@@ -7,8 +7,8 @@ beforeEach(function(done){
 afterEach(function(done){
     apiv1Stub.restore();
     done();
-});
-*/
+});*/
+
 describe('IntegrationBus', function(){
     this.timeout(30000);
     it('should not barf',function(done){
