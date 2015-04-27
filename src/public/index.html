@@ -46,7 +46,35 @@
       </div>
     </nav>
     <div class="container-fluid">
-      <div class="row">
+      <div class="row">        
+        <div class="col-md-3">
+          <div class="row">
+            <div class="col-md-10">
+              <h3>Static specific</h3>
+            </div>            
+            <div ng-if="editMode" class="col-md-2">
+              <img ng-click="editWidget(widget)" src="images/settings-manage_32.png"></img>
+            </div>
+          </div>
+          <div class="row widget-wrapper">
+            <div iib-flow-stats iib-simulation="true"  iib-flow-name="Static flow name" iib-mqtt-host="localhost" iib-mqtt-port="4414"></div>          
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <div class="row">
+            <div class="col-md-10">
+              <h3>Static generic</h3>
+            </div>            
+            <div ng-if="editMode" class="col-md-2">
+              <img ng-click="editWidget(widget)" src="images/settings-manage_32.png"></img>
+            </div>
+          </div>
+          <div class="row widget-wrapper">
+            <div iib-widget iib-widget-type="iib-flow-stats" iib-simulation="true"  iib-attributes="attributesForGeneric"></div>          
+          </div>
+        </div>
+
         <div ng-repeat="widget in widgets" class="col-md-3">
           <div class="row">
             <div class="col-md-10">
@@ -70,6 +98,11 @@
   var app = angular.module("HelloAngular",['iibWidgets','ui.bootstrap'])//create an application with a dependancy on ngIib 
             .controller("MainController",function($scope,$modal,$http){
               console.log("Using flow tester");
+
+              $scope.attributesForGeneric={
+                iibFlowName : "genericFlowName",
+                iibSimulation: "true"
+              };
 
               $scope.editMode=false;
 
@@ -114,6 +147,14 @@
                 specId:"iib-flow-stats",
                 attributes:{
                   flowName:"MQTTSubscribe",
+                  host:"localhost",
+                  port:4414
+                }
+              },
+              {
+                specId:"iib-flow-stats",
+                attributes:{
+                  flowName:"TransformationMap",
                   host:"localhost",
                   port:4414
                 }
@@ -176,29 +217,6 @@
   });
 
   app.controller('EditWidgetController',function($scope,$modalInstance,widget,iibWidgetSpec){
-    
-    /*var textType={
-      isText:function(){
-        console.log("isText");
-        return true;
-      }
-    };
-
-    $scope.widget={
-      attributes:[
-      {
-        type:textType,
-        name:"flowName",
-        value:widget.attributes.flowName
-
-      },
-      {
-        type:textType,        
-        name:"Simulation"
-      }
-      ]
-    };*/
-    
 
     iibWidgetSpec.getWidget(widget.specId,function(widgetDescriptor){
       //initialise the widget

@@ -11,11 +11,11 @@ includeD3();
     .directive('iibFlowStats', ['$rootScope', 'iibSubscriber',iibFlowStatsDirective])
     .directive('iibWidget',    ['$rootScope', 'iibSubscriber',iibWidgetDirective])
     ;
-  
 
   var flowStatsWidget = {
-    link:function(scope,iElement,iAttrs){
-      console.log("flow stats");
+    type:"iib-flow-stats",
+    link:function(scope,iElement,iAttrs,iibSubscriber){
+      console.log("flow stats: " + scope.iibFlowName);
       scope.metric=[];
       //TODO make this configurable
       scope.iibMaxRecords=50;
@@ -34,6 +34,7 @@ includeD3();
       //subscribe to the flow stats events 
       //TODO - put this into a controller?
       if(scope.iibSimulation) {
+        console.log("simulation on");
         setInterval(function(){
           scope.$apply(function(){
             scope.metric.push(15 + Math.floor((Math.random() * 10) + 1));
@@ -44,7 +45,9 @@ includeD3();
         },500);
       }else{
         var topic = "IBM/IntegrationBus/TESTNODE_John/Statistics/JSON/+/+/applications/+/messageflows/" + scope.iibFlowName;
-        iibSubscriber.subscribe(topic,scope,onMessageArrived);
+        iibSubscriber.subscribe(topic,scope,this.onMessageArrived);
+        console.log("simulation off");
+        console.dir(scope);
 
       }
     },
@@ -360,8 +363,12 @@ includeD3();
       //if we want the decision to be on a per instance basis, then it needs to be done as late as the pre-link stage
       //whatever, we need to do it after setting up the activeEgs
       if($scope.iibSimulation=="true") {
-        console.log("$scope");
+        console.log("simulation on");
         return iibFlowMonitoringSimulationController($scope);
+      }else{
+
+        console.log("simulation off");
+
       }
 
       var topic = getTopic({
@@ -434,15 +441,21 @@ includeD3();
       restrict: 'AC',
       scope:{
         iibWidgetType:'@',
-        iibAttributes:'@'
+        iibAttributes:'='
       },
-      link: link,
-      controller:iibWidgetController
+      link: link
     };
     
     function link(scope,iElement,iAttrs){
-      if(scope.iibWidgetType==iibFlowStatsDirective.widget.type) {
-
+      console.log("iibWidget " + flowStatsWidget.type);
+      if(scope.iibWidgetType == flowStatsWidget.type) {
+        console.log("flowstats widget");
+        console.dir(scope.iibAttributes);
+        scope.iibFlowName   = scope.iibAttributes.iibFlowName;
+        scope.iibMqttHost   = scope.iibAttributes.iibMqttHost;
+        scope.iibMqttPort   = scope.iibAttributes.iibMqttPort;
+        scope.iibSimulation = scope.iibAttributes.iibSimulation;
+        return flowStatsWidget.link(scope,iElement,iAttrs,iibSubscriber);
       }
     };
   };
@@ -451,8 +464,7 @@ includeD3();
     var iibSubscriber=iibSubscriber;
     return {
       restrict: 'AC',
-      //template:'<h3>{{iibFlowName}} throughput</h3>',
-        //TODO - add require:'ngEventTopic and define a directive and controller for that?
+        //TODO - can we derive these scope attributes from the widgetSpec factory?
       scope:{
         iibFlowName:'@',
         iibMqttHost:'@',
@@ -464,7 +476,7 @@ includeD3();
     };
 
     function link(scope,iElement,iAttrs){
-      return flowStatsWidget.link(scope,iElement,iAttrs);
+      return flowStatsWidget.link(scope,iElement,iAttrs,iibSubscriber);
     }
     
     function iibFlowStatsController($scope){
@@ -478,7 +490,7 @@ includeD3();
         console.log("isText");
         return true;
       }
-    };
+    };        
     return {
       widgets:[
         {
@@ -489,12 +501,24 @@ includeD3();
           attributes:[
             {
               type:textType,
-              name:"flowName"
+              name:"flowName",
+              id : "iib-flow-name"
 
             },
             {
               type:textType,        
-              name:"Simulation"
+              name:"Simulation",
+              id : "iib-simluation"
+            },
+            {
+              type:textType,        
+              name:"Host",
+              id : "iib-simluation"
+            },
+            {
+              type:textType,        
+              name:"Port",
+              id : "iib-simluation"
             }
           ]
         },
