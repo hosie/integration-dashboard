@@ -1,0 +1,18 @@
+<div class="modal-content">
+    <div class="modal-header ng-scope">
+        <h3 class="modal-title">Edit widget</h3>
+    </div>
+    <div class="modal-body ng-scope">
+        <form>
+            <div ng-repeat="attribute in widget.attributes">
+                <div ng-if="attribute.type.isText()">
+                    {{attribute.name}}: <input type="text" ng-model="attribute.value" value="{{attribute.value}}"/><br />
+                </div>                            
+            </div>        
+        </form>                
+    </div>
+    <div class="modal-footer ng-scope">
+        <button class="btn btn-primary" ng-click="ok()">OK</button>
+        <button class="btn btn-warning" ng-click="cancel()">Cancel</button>
+    </div>  
+</div>

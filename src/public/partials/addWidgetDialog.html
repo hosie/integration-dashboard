@@ -1,0 +1,20 @@
+<div class="modal-content">
+    <div class="modal-header ng-scope">
+        <h3 class="modal-title">Add widget</h3>
+    </div>
+    <div class="modal-body ng-scope">
+        <carousel interval="myInterval">
+            <slide ng-repeat="widget in installedWidgets" active="slide.active">
+                <img  ng-click="selected = widget" ng-src="{{widget.preview}}" style="margin:auto;">
+                <div class="carousel-caption">
+                    <h4>{{widget.name}}</h4>
+                    <p>{{widget.description}}</p>
+                </div>
+            </slide>
+    </carousel>
+    </div>
+    <div class="modal-footer ng-scope">
+        <button class="btn btn-primary" ng-click="ok()">OK</button>
+        <button class="btn btn-warning" ng-click="cancel()">Cancel</button>
+    </div>  
+</div>

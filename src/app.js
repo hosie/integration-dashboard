@@ -44,6 +44,8 @@ fs.readFile('hosts.json', function (err, data) {
     app.use("/test",express.static(testDir));
   }
 
+  app.use("/prereqs",express.static(__dirname + "/bower_components"));
+
   //all other static html content is in public
   app.use("/",express.static(__dirname + "/public"));
   

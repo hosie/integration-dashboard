@@ -1,80 +1,75 @@
-/*
-Common styles for widgets
-*/
-.axis path,
-.axis line {
+/*Needed to use angular-bootstrap*/
+.nav, .pagination, .carousel, .panel-title a { cursor: pointer; }
+
+.navbar-right{
+  /*TODO less padding on mobile?*/
+  padding-right:30px; 
+}
+
+.widget-wrapper{
+  padding-right:30px;
+}
+
+body {
+  margin: 0;
+  background-color: #003F69;
+  color: #fff;
+
+  padding: 70px;
+}
+.modal-content{
+  color: #003F69;
+}
+
+.iib-chart path.line {
   fill: none;
+  stroke: #666;
+  stroke-width: 1.5px;
+}
+
+.iib-chart .y.axis .tick line{/*,text{*/
+  stroke:#fff;
+  stroke-width: 1px;
+
+  font: 10px arial;
+}
+
+.iib-chart .dataLine{
+
   stroke: #00B2EF;
+}
+
+path.area {
+  fill: #e7e7e7;
+}
+
+.axis {
   shape-rendering: crispEdges;
+}
+
+.x.axis line {
+  stroke: #fff;
+}
+
+.x.axis .minor {
+  stroke-opacity: .5;
 }
 
 .x.axis path {
   display: none;
 }
 
-.line {
+.y.axis line, .y.axis path {
   fill: none;
-  stroke: steelblue;
-  stroke-width: 1.5px;
+  stroke: #fff;
 }
 
-circle {
-  fill: rgb(31, 119, 180);
-  fill-opacity: .25;
-  stroke: rgb(31, 119, 180);
-  stroke-width: 1px;
+.iib-chart{
+  background-color: #383633;
 }
 
-.resourceType{
-    fill: #83d1f5;
-    stroke: #393a3f;    
+.activeServer text{
+  color: #000000;
+  stroke: #000000;
+  fill: #000000;
 }
-
-.resourceTypeLabel{
-    fill: #D9F3F9;
-    font-family: "HelvNeue Bold for IBM", Helvetica, sans-serif;
-    font-size: 20px;
-    text-anchor:start;
-}
-
-.resourceStatsTableRowTitle{
-    font-family: "HelvNeue Bold for IBM", Helvetica, sans-serif;
-    font-size: 20px;
-
-}
-
-.resourceStatsTableValue{
-    font-family: "HelvNeue Bold for IBM", Helvetica, sans-serif;
-    font-size: 20px;
-}
-
-.resourceStatsTableHeader{
-    font-family: "HelvNeue Bold for IBM", Helvetica, sans-serif;
-    font-size: 20px;
-}
-
-.leaf circle {
-  /*fill: #ff7f0e;*/
-  /*fill-opacity: 1;*/
-}
-
-.integrationNodeLabel {
-    font-family: "HelvNeue Bold for IBM", Helvetica, sans-serif;
-    font-size: 25px;    
-    fill:  #00B2EF;
-    
-}
-.integrationServerLabel {
-    font-family: "HelvNeue Bold for IBM", Helvetica, sans-serif;
-    font-size: 20px;    
-    fill:  #00B2EF;
-}
-
-
-
-/*.clone {
-    position: absolute;
-}*/
-
-
-
