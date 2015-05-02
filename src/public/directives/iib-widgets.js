@@ -12,118 +12,88 @@ includePaho();
     .directive('iibWidget',    ['$rootScope', 'iibSubscriber','d3Util',iibWidgetDirective])
     ;
 
-  var flowStatsWidget = {
-    type:"iib-flow-stats",
-    link:function(scope,iElement,iAttrs,iibSubscriber,d3Util){
-      console.log("flow stats: " + scope.iibFlowName);
-      scope.metric=[];
-      //TODO make this configurable
-      scope.iibMaxRecords=50;
-
-      //initialise the D3 rendering
-      //this.intializeD3(scope,iElement);
-      var canvasOptions = {
-        aspectRatio : 1
-      };
-      var canvas = d3Util.createCanvas(iElement[0],canvasOptions);
-      this.renderStaticD3(scope,canvas);
-
-      var self=this;
-      //update D3 rendering whenever the metric changes
-      scope.$watch('metric',function(newVal){
-        if(newVal){
-          self.renderDynamicD3(scope,iElement);
-        }
-      },true);
-
-      //subscribe to the flow stats events 
-      //TODO - put this into a controller?
-      if(scope.iibSimulation) {
-        console.log("simulation on");
-        setInterval(function(){
-          scope.$apply(function(){
-            scope.metric.push(15 + Math.floor((Math.random() * 10) + 1));
-            if(scope.metric.length>scope.iibMaxRecords) {
-              scope.metric.shift();
-            }
-          });
-        },500);
+  //TODO - is there a more angular way of making the widgetRegistry available to the widgets so that they can register themselves?
+  //       Could make the widgets services or factories and use dependency inject, this would even work for widgets in separate modules  
+  //       How would this affect the portability of the widgets to a non angular framework
+  var widgetRegistry = {
+    factories:[],
+    register:function(widgetFactory){
+      this.factories[widgetFactory.type]=widgetFactory;      
+    },
+    createWidget:function(type,options){
+      var factory = this.factories[type];
+      if(factory){
+        return new factory(options);        
       }else{
-        var topic = "IBM/IntegrationBus/TESTNODE_John/Statistics/JSON/+/+/applications/+/messageflows/" + scope.iibFlowName;
-        iibSubscriber.subscribe(topic,scope,this.onMessageArrived);
-        console.log("simulation off");
-        console.dir(scope);
-
-      }
-    },
-    renderStaticD3:function (scope,canvas){
-
-       var data = scope.metric;
-      canvas.svg
-      .attr('class','iib-chart');
-
-      scope.maxY    = d3.max(data)|1;
-      scope.y         = d3.scale.linear()
-                    .domain([0, scope.maxY])
-                    .range([canvas.height, 0]);
-
-      scope.yAxis = d3.svg.axis().scale(scope.y)
-                      .orient('left')
-                      .ticks(5);
-
-      //console.log("maxY=",scope.maxY);
-      scope.x         = d3.scale.linear()
-                  .domain([0, data.length])
-                  .range([0, canvas.width]),
-
-      scope.yAxisGroup = canvas.svg.append('g')
-          .attr('class', 'y axis')
-          .attr('stroke','#777')
-          .call(scope.yAxis);
-
-      scope.line    = d3.svg.line()
-                      .interpolate('cardinal')
-                      .x(function(d,i){
-        return scope.x(i);})
-                      .y(function(d,i){
-
-        
-        
-        return scope.y(d);});
-      scope.path    = canvas.svg.append('svg:path')
-                        .attr('class','dataLine')
-                        .data([data])
-                        .attr('d', scope.line)
-                        .attr('fill', 'none')
-                        .attr('stroke-width', '1')
-                        .attr('stroke','#000');
-    },
-    onMessageArrived:function (message,scope) {
-      
-      var payloadString = message.payloadString;
-      //console.log(payloadString);
-      var payloadObj = JSON.parse(payloadString);
-      var totalInputMessages = payloadObj.WMQIStatisticsAccounting.MessageFlow.TotalInputMessages;
-      scope.$apply(function(){
-        scope.metric.push(totalInputMessages);
-        if(scope.metric.length>scope.iibMaxRecords) {
-          scope.metric.shift();
-        }
-      });
-    },
-    renderDynamicD3: function (scope,element){
-
-      scope.x.domain([0,scope.metric.length]);
-      scope.maxY    = d3.max(scope.metric)|1;
-      scope.y.domain([0, scope.maxY]);
-
-      scope.yAxis.scale(scope.y);
-      scope.yAxisGroup.call(scope.yAxis);
-      scope.path
-        .attr('d',scope.line);
-
-    }
+        return null;
+      }      
+    }    
   };
+
+  /*
+  *  Define the flow stats widget and register it.
+  */
+  (function(){
+    var flowStatsWidget = function(options){
+      return {
+        iibSimulation:options.iibSimulation || false,
+        aspectRatio : 1,
+        renderStaticD3:function (canvas){
+          
+          canvas.svg
+          .attr('class','iib-chart');
+
+          this.maxY    = d3.max(this.data)|1;
+          this.y         = d3.scale.linear()
+                        .domain([0, this.maxY])
+                        .range([canvas.height, 0]);
+
+          this.yAxis = d3.svg.axis().scale(this.y)
+                          .orient('left')
+                          .ticks(5);
+
+          //console.log("maxY=",this.maxY);
+          this.x         = d3.scale.linear()
+                      .domain([0, this.data.length])
+                      .range([0, canvas.width]);
+
+          this.yAxisGroup = canvas.svg.append('g')
+              .attr('class', 'y axis')
+              .attr('stroke','#777')
+              .call(this.yAxis);
+
+          var self=this;
+          this.line    = d3.svg.line()
+                          .interpolate('cardinal')
+                          .x(function(d,i){return self.x(i);})
+                          .y(function(d,i){return self.y(d);});
+                          
+          this.path    = canvas.svg.append('svg:path')
+                            .attr('class','dataLine')
+                            .data([this.data])
+                            .attr('d', this.line)
+                            .attr('fill', 'none')
+                            .attr('stroke-width', '1')
+                            .attr('stroke','#000');
+        },
+        renderDynamicD3: function (element){
+
+          this.x.domain([0,this.data.length]);
+          this.maxY    = d3.max(this.data)|1;
+          this.y.domain([0, this.maxY]);
+
+          this.yAxis.scale(this.y);
+          this.yAxisGroup.call(this.yAxis);
+          this.path
+            .attr('d',this.line);
+
+        }        
+      }
+    };
+    flowStatsWidget.type="iib-flow-stats";
+    widgetRegistry.register(flowStatsWidget);
+  })();
+
 
   function d3UtilFactory(){
     function createCanvas(element, options) {
@@ -166,10 +136,40 @@ includePaho();
   	  }
     }
 
-   
-
+    function renderWidget(widget,iElement){
+      var canvasOptions = {
+        aspectRatio : widget.aspectRatio
+      };
+      var canvas = createCanvas(iElement[0],canvasOptions);
+      widget.data=[];
+      widget.renderStaticD3(canvas);
+      
+      if (widget.iibSimulation){
+        setInterval(function(){
+          
+          widget.data.push(15 + Math.floor((Math.random() * 10) + 1));
+          if(widget.data.length>widget.iibMaxRecords) {
+            widget.data.shift();
+          }
+          widget.renderDynamicD3(canvas);
+          
+        },500);        
+      }else{
+        //TODO get topic from widget - even better, get metric names ( eg. flow.cpu...) from widget and use separate facotry to convert to topic
+        
+        var topic = "IBM/IntegrationBus/TESTNODE_John/Statistics/JSON/+/+/applications/+/messageflows/" + scope.iibFlowName;
+        iibSubscriber.subscribe(topic,scope,function(message){
+          //TODO map message to data format required by widget.
+          //who provides the mapping function?  For now, the widget but lets separate that out so that the widget just says the metric that they want (e.g. flow.cpu)
+          //widget.onMessageArrived(message);
+        });
+        console.log("simulation off");
+        console.dir(scope);
+        
+      }
+    }
     return {
-      createCanvas:createCanvas
+      renderWidget:renderWidget
     }
   }
 
@@ -485,21 +485,13 @@ includePaho();
     };
     
     function link(scope,iElement,iAttrs){
-      console.log("iibWidget " + flowStatsWidget.type);
-      if(scope.iibWidgetType == flowStatsWidget.type) {
-        console.log("flowstats widget");
-        console.dir(scope.iibAttributes);
-        scope.iibFlowName   = scope.iibAttributes.iibFlowName;
-        scope.iibMqttHost   = scope.iibAttributes.iibMqttHost;
-        scope.iibMqttPort   = scope.iibAttributes.iibMqttPort;
-        scope.iibSimulation = scope.iibAttributes.iibSimulation;
-        return flowStatsWidget.link(scope,iElement,iAttrs,iibSubscriber,d3Util);
-      }
+      var widget=widgetRegistry.createWidget(scope.iibWidgetType ,scope.iibAttributes);      
+      d3Util.renderWidget(widget,iElement);      
     };
   };
 
   function iibFlowStatsDirective($rootScope,iibSubscriber,d3Util){
-    var iibSubscriber=iibSubscriber;
+    var iibSubscriber=iibSubscriber; 
     return {
       restrict: 'AC',
         //TODO - can we derive these scope attributes from the widgetSpec factory?
@@ -514,7 +506,9 @@ includePaho();
     };
 
     function link(scope,iElement,iAttrs){
-      return flowStatsWidget.link(scope,iElement,iAttrs,iibSubscriber,d3Util);
+      var widget=widgetRegistry.createWidget("iib-flow-stats",{iibSimulation:scope.iibSimulation});
+      
+      d3Util.renderWidget(widget,iElement);      
     }
     
     function iibFlowStatsController($scope){
