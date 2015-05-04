@@ -7,6 +7,7 @@ includePaho();
     .factory('iibSubscriber',iibSubscriber)
     .factory('iibWidgetSpec',iibWidgetSpecFactory)
     .factory('d3Util',d3UtilFactory)
+    .factory('iibIntegrationBus',iibIntegrationBusFactory)
     .directive('iibFlowMonitoring',['$rootScope','iibSubscriber',iibFlowMonitoringDirective])
     .directive('iibFlowStats', ['$rootScope', 'iibSubscriber','d3Util',iibFlowStatsDirective])
     .directive('iibWidget',    ['$rootScope', 'iibSubscriber','d3Util',iibWidgetDirective])
@@ -17,17 +18,46 @@ includePaho();
   //       How would this affect the portability of the widgets to a non angular framework
   var widgetRegistry = {
     factories:[],
+    /*
+    Parms
+      widgetFactory : function(canvas,data)
+        Constructor function for widget 
+          Parms
+            canvas
+            {
+              svg    : a d3 selection containing the root SVG element for this widget
+              height : the height, in pixels of the area allocated to draw this widget
+              width  : the width, in pixels of the area allocated to draw this widget
+            }
+            data : an object, or array containing the data to be rendered by this widget. 
+                   The structure of this parameter is determined by the map field of the factory
+          Returns : an instance widget object          
+            {
+              renderStaticD3 : function(canvas,data)
+                Called once per widget object instance to initialise the D3 elements that will not vary
+              renderDynamicD3 : function(canvas,data)
+                Called whenever the bound data changes.
+            }
+          Properties
+            type        : (string) non-normalized name of the widget type, e.g. to be used in angular directives
+            map         : function(IntegrationBus,options)
+              Convert the IntegrationBus object to the format of data required. This can be a function provided, specifically for use with this widget or can be one of the general map functions provided by d3Util facotry
+            TODO - probably need some way to indicate when to call renderDymanic - no point redrawing a chart for every publication if it is not renedering any data that was altered in that publication.  
+                   This is purely a performance optimisation and would really only benefit charts that are static so maybe we just need to no-op the renderDynamicD3 function if the chart is static
+    */
     register:function(widgetFactory){
-      this.factories[widgetFactory.type]=widgetFactory;      
+      this.factories[widgetFactory.type]=widgetFactory;
     },
     createWidget:function(type,options){
       var factory = this.factories[type];
       if(factory){
-        return new factory(options);        
+        var widget=new factory(options);
+        widget.map=factory.map;
+        return widget;
       }else{
         return null;
       }      
-    }    
+    }
   };
 
   /*
@@ -38,12 +68,12 @@ includePaho();
       return {
         iibSimulation:options.iibSimulation || false,
         aspectRatio : 1,
-        renderStaticD3:function (canvas){
+        renderStaticD3:function (canvas,data){
           
           canvas.svg
           .attr('class','iib-chart');
 
-          this.maxY    = d3.max(this.data.map(function(item){return item.TotalInputMessages}))|1;
+          this.maxY    = d3.max(data.map(function(item){return item.TotalInputMessages}))|1;
           this.y         = d3.scale.linear()
                         .domain([0, this.maxY])
                         .range([canvas.height, 0]);
@@ -54,7 +84,7 @@ includePaho();
 
           //console.log("maxY=",this.maxY);
           this.x         = d3.scale.linear()
-                      .domain([0, this.data.length])
+                      .domain([0, data.length])
                       .range([0, canvas.width]);
 
           this.yAxisGroup = canvas.svg.append('g')
@@ -71,16 +101,16 @@ includePaho();
                           
           this.path    = canvas.svg.append('svg:path')
                             .attr('class','dataLine')
-                            .data([this.data])
+                            .data([data])
                             .attr('d', this.line)
                             .attr('fill', 'none')
                             .attr('stroke-width', '1')
                             .attr('stroke','#000');
         },
-        renderDynamicD3: function (element){
+        renderDynamicD3: function (canvas,data){
 
-          this.x.domain([0,this.data.length]);
-          this.maxY    = d3.max(this.data.map(function(item){return item.TotalInputMessages}))|1;
+          this.x.domain([0,data.length]);
+          this.maxY    = d3.max(data.map(function(item){return item.TotalInputMessages}))|1;
           this.y.domain([0, this.maxY]);
 
           this.yAxis.scale(this.y);
@@ -92,11 +122,158 @@ includePaho();
       }
     };
     flowStatsWidget.type="iib-flow-stats";
+    flowStatsWidget.map=function(integrationBus,options){
+        return  integrationBus
+                  .integrationNodes[0]
+                  .integrationServers[0]
+                  .applications[0]
+                  .messageFlows[0]
+                  .stats;
+      };
     widgetRegistry.register(flowStatsWidget);
   })();
+  
+  /*
+  *  Define the circle pack widget and register it.
+  *    data is an IntegrationBus object
+  *    topic is ...
+  */
+  (function(){
+    var circlePackWidget = function(options){
+     
+      return {
+        //TODO use IntegrationBus.js to get this data from a live bus or to get simulated data
+        data:{
+          type:"IntegrationBus",
+          brokers:[
+          {
+            type:"IntegrationNode",
+            name:"IntegrationNode1",
+            executionGroups:{
+              executionGroup:[
+              {
+                type:"IntegrationServer",
+                name:"IntegtrationServer1",
+                applications:{
+                  application:[
+                  {
+                    type:"application",
+                    name:"application1",
+                    messageFlows:{
+                      messageFlow:[
+                      {
+                        type:"messageFlow",
+                        name:"MessageFlow1",
+                        TotalCPUTime:300                        
+                      },
+                      {
+                        type:"messageFlow",
+                        name:"MessageFlow2",
+                        TotalCPUTime:200                        
+                      }
+                      ]
+                    }
+                  }]
+                }
+              }]
+            }
+          }
+          ]
+          
+        },
+        iibSimulation:options.iibSimulation || false,
+        aspectRatio : 1,
+        renderStaticD3:function (canvas){
+          canvas.svg
+          .attr('class','iib-chart');
+          //create a new d3 pack and 
+          //set the accessor for data see - https://github.com/mbostock/d3/wiki/Pack-Layout#wiki-value
+          //here we assume that the data will have a "size" field
+          var diameter = canvas.height;
+          var format   = d3.format(",d");
+          var pack     = d3.layout.pack()
+          .size([diameter - 4, diameter - 4])
+          .sort(null)
+          .value(function(d) { 
+              if( d ==  undefined) {
+                  return 1;
+              }
+              if( d.TotalCPUTime ==  0) {
+                  return 1;
+              }
+              return d.TotalCPUTime; 
+           })
+          .padding(2)
+          .children(function(d){
+              if(d.type==="messageFlow")
+              {
+                  return null;
+              }else if (d.type==="application")
+              {
+                  return d.messageFlows.messageFlow;
+              }else if((d.type==="IntegrationServer")||((d.type==="executionGroup"))){
+                  return d.applications.application;
+              }else if((d.type==="IntegrationNode")||(d.type==="broker")){
+                  return d.executionGroups.executionGroup;
+              }else if(d.type==="IntegrationBus"){
+                  return d.brokers;
+              }
+              return null;
+          });
+          //TODO figure out a better way to update the data and re-draw the visuals
+          var rootGroup = canvas.svg.append("g");
 
+          var nodeRoot = rootGroup.datum(this.data);
+          
+          var node = nodeRoot.selectAll(".node")
+          //let the visuals see the data
+          .data(pack.nodes);
 
-  function d3UtilFactory(){
+          var newNode = node.enter().append("g")
+          .attr("class", function(d) { 
+            var clazz = (d.type!=="messageFlow") ? "node" : "leaf node"; 
+            return clazz;
+          })
+          .attr("transform", function(d) { 
+            return "translate(" + d.x + "," + d.y + ")"; 
+          });
+
+          newNode.append("title")
+          .text(function(d) { 
+            return d.name + (d.type !== "messageFlow" ? "" : ": " + format(d.TotalCPUTime)); 
+          });
+
+          newNode.append("circle")            
+          .each(function(d,i){
+            if(d.type=="messageFlow") {
+            }
+                  
+            //d3.select(this).each(draggableElement);
+          })
+          .attr("r", function(d) {             
+            return d.r;
+          });
+
+          //make the top level nodes clickable and show their name
+          node.filter(function(d) { return d.depth <2 })
+          .append("text")
+          .attr("dy", ".3em")
+          .style("text-anchor", "middle")      
+          .text(function(d) { return d.type === "IntegrationBus" ? "" : d.name.substring(0, d.r / 3); })
+          ;
+
+          node.exit().remove();
+        },
+        renderDynamicD3: function (canvas){
+          
+        }        
+      }
+    };
+    circlePackWidget.type="iib-circle-pack";
+    widgetRegistry.register(circlePackWidget);
+  })();  
+
+  function d3UtilFactory(iibIntegrationBus){
     function createCanvas(element, options) {
   	  var fullWidth = d3.select(element).node().offsetWidth;
       
@@ -142,29 +319,23 @@ includePaho();
         aspectRatio : widget.aspectRatio
       };
       var canvas = createCanvas(iElement[0],canvasOptions);
-      widget.data=[];
-      widget.renderStaticD3(canvas);
+      
+      var data = widget.map(iibIntegrationBus);
+          
+      widget.renderStaticD3(canvas,data);
       
       if (widget.iibSimulation){
-        setInterval(function(){
-          var timeStamp = new Date();
-          timeStamp = timeStamp.toUTCString();
-          widget.data.push(   
-          {
-            EndTime:timeStamp,
-            TotalInputMessages:15 + Math.floor((Math.random() * 10) + 1)
-          });
-            
-          if(widget.data.length>widget.iibMaxRecords) {
-            widget.data.shift();
-          }
-          widget.renderDynamicD3(canvas);
-          
-        },500);        
+
+        iibIntegrationBus.on('messageFlowStats',{/*TODO flow name*/},function(){
+          var data = widget.map(iibIntegrationBus);          
+          widget.renderDynamicD3(canvas,data);          
+        });
+        
+        
       }else{
         //TODO get topic from widget - even better, get metric names ( eg. flow.cpu...) from widget and use separate facotry to convert to topic
         
-        var topic = "IBM/IntegrationBus/TESTNODE_John/Statistics/JSON/+/+/applications/+/messageflows/" + scope.iibFlowName;
+        /*var topic = "IBM/IntegrationBus/TESTNODE_John/Statistics/JSON/+/+/applications/+/messageflows/" + scope.iibFlowName;
         iibSubscriber.subscribe(topic,scope,function(message){
           //TODO map message to data format required by widget.
           //who provides the mapping function?  For now, the widget but lets separate that out so that the widget just says the metric that they want (e.g. flow.cpu)
@@ -172,11 +343,12 @@ includePaho();
         });
         console.log("simulation off");
         console.dir(scope);
-        
+        */
       }
     }
     return {
-      renderWidget:renderWidget
+      renderWidget:renderWidget      
+      
     }
   }
 
@@ -492,7 +664,7 @@ includePaho();
     };
     
     function link(scope,iElement,iAttrs){
-      var widget=widgetRegistry.createWidget(scope.iibWidgetType ,scope.iibAttributes);      
+      var widget=widgetRegistry.createWidget(scope.iibWidgetType ,scope.iibAttributes | {} );      
       d3Util.renderWidget(widget,iElement);      
     };
   };
@@ -594,6 +766,78 @@ includePaho();
         }
       }
     };   
+  }
+  
+  function iibIntegrationBusFactory(){
+    //TODO inject paho and bring in IntegrationBus.js from the master branch
+    var integrationBus = {
+      type:"IntegrationBus",
+      on:function(eventType,options,callback){
+        setInterval(function(){
+          integrationBus
+            .integrationNodes[0]
+            .integrationServers[0]
+            .applications[0]
+            .messageFlows[0]
+            .stats
+            .push( {
+                      EndTime:new Date() ,
+                      TotalInputMessages:15 + Math.floor((Math.random() * 10) + 1)  
+                    });
+          
+          callback();
+        },2000)
+      },
+      integrationNodes:[
+      {
+        type:"IntegrationNode",
+        on:function(event,callback){
+          if(event=='messageFlowStats'){
+            
+          }else if (event=='resourceStats'){
+            
+          }
+          
+        },
+        integrationServers:[
+        {
+          type:"IntegrationServer",
+          name:"MyIntegrationServer",
+          on:function(event,callback){
+            if (event=='resourceStats'){
+              
+            }
+            //TODO onStop
+            
+          },
+          //TODO stop/start
+          applications:[          
+          {
+          
+            type:"Application",
+            name:"MyApplication",
+            //TODO integrationNode:
+            messageFlows:[
+            {
+              type:"MessageFlow",
+              name:"MyMessageFlow",
+              on:function(){
+                
+              },
+              stats:[]
+            }],
+            //TODO integrationNode
+            on:function(eventType,callback){
+              if(eventType=='messageFlowStats'){
+                                  
+              }
+            }
+          }]          
+        }]
+      }]
+    };
+    return integrationBus;
+    
   }
 })();
 
