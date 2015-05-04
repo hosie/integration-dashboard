@@ -43,7 +43,7 @@ includePaho();
           canvas.svg
           .attr('class','iib-chart');
 
-          this.maxY    = d3.max(this.data)|1;
+          this.maxY    = d3.max(this.data.map(function(item){return item.TotalInputMessages}))|1;
           this.y         = d3.scale.linear()
                         .domain([0, this.maxY])
                         .range([canvas.height, 0]);
@@ -66,7 +66,8 @@ includePaho();
           this.line    = d3.svg.line()
                           .interpolate('cardinal')
                           .x(function(d,i){return self.x(i);})
-                          .y(function(d,i){return self.y(d);});
+                          .y(function(d,i){
+                            return self.y(d.TotalInputMessages);});
                           
           this.path    = canvas.svg.append('svg:path')
                             .attr('class','dataLine')
@@ -79,7 +80,7 @@ includePaho();
         renderDynamicD3: function (element){
 
           this.x.domain([0,this.data.length]);
-          this.maxY    = d3.max(this.data)|1;
+          this.maxY    = d3.max(this.data.map(function(item){return item.TotalInputMessages}))|1;
           this.y.domain([0, this.maxY]);
 
           this.yAxis.scale(this.y);
@@ -146,8 +147,14 @@ includePaho();
       
       if (widget.iibSimulation){
         setInterval(function(){
-          
-          widget.data.push(15 + Math.floor((Math.random() * 10) + 1));
+          var timeStamp = new Date();
+          timeStamp = timeStamp.toUTCString();
+          widget.data.push(   
+          {
+            EndTime:timeStamp,
+            TotalInputMessages:15 + Math.floor((Math.random() * 10) + 1)
+          });
+            
           if(widget.data.length>widget.iibMaxRecords) {
             widget.data.shift();
           }
