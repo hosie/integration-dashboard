@@ -3,6 +3,7 @@ includePaho();
 
 (function(){
   //TODO - inject paho?
+  console.log("defining module iibWidgets");
   angular.module('iibWidgets',[])
     .factory('iibSubscriber',iibSubscriber)
     .factory('iibWidgetSpec',iibWidgetSpecFactory)
@@ -680,19 +681,14 @@ includePaho();
         iibMqttPort:'@',
         iibSimulation:'@'
       },
-      link: link,
-      controller:iibFlowStatsController
+      link: link
     };
 
     function link(scope,iElement,iAttrs){
       var widget=widgetRegistry.createWidget("iib-flow-stats",{iibSimulation:scope.iibSimulation});
       
       d3Util.renderWidget(widget,iElement);      
-    }
-    
-    function iibFlowStatsController($scope){
-      
-    }
+    }    
   }
 
   function iibWidgetSpecFactory(){
@@ -769,73 +765,9 @@ includePaho();
   }
   
   function iibIntegrationBusFactory(){
+    console.log("real integration bus");
     //TODO inject paho and bring in IntegrationBus.js from the master branch
-    var integrationBus = {
-      type:"IntegrationBus",
-      on:function(eventType,options,callback){
-        setInterval(function(){
-          integrationBus
-            .integrationNodes[0]
-            .integrationServers[0]
-            .applications[0]
-            .messageFlows[0]
-            .stats
-            .push( {
-                      EndTime:new Date() ,
-                      TotalInputMessages:15 + Math.floor((Math.random() * 10) + 1)  
-                    });
-          
-          callback();
-        },2000)
-      },
-      integrationNodes:[
-      {
-        type:"IntegrationNode",
-        on:function(event,callback){
-          if(event=='messageFlowStats'){
-            
-          }else if (event=='resourceStats'){
-            
-          }
-          
-        },
-        integrationServers:[
-        {
-          type:"IntegrationServer",
-          name:"MyIntegrationServer",
-          on:function(event,callback){
-            if (event=='resourceStats'){
-              
-            }
-            //TODO onStop
-            
-          },
-          //TODO stop/start
-          applications:[          
-          {
-          
-            type:"Application",
-            name:"MyApplication",
-            //TODO integrationNode:
-            messageFlows:[
-            {
-              type:"MessageFlow",
-              name:"MyMessageFlow",
-              on:function(){
-                
-              },
-              stats:[]
-            }],
-            //TODO integrationNode
-            on:function(eventType,callback){
-              if(eventType=='messageFlowStats'){
-                                  
-              }
-            }
-          }]          
-        }]
-      }]
-    };
+    var integrationBus = window.Integration.getIntegrationBus();
     return integrationBus;
     
   }
