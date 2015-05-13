@@ -73,3 +73,29 @@ path.area {
   stroke: #000000;
   fill: #000000;
 }
+
+
+.iib-sunburst-IntegrationBus{
+  fill:  #923E91;
+}
+
+.iib-sunburst-IntegrationNode{
+  fill:  #8CDCF8;
+}
+
+.iib-sunburst-IntegrationServer{
+  fill:  #BADD8C;
+}
+
+.iib-sunburst-Application{
+  fill:  #FBF498;
+}
+
+.iib-sunburst-MessageFlow{
+  fill:  #F7BC7D;
+}
+
+.iib-sunburst path{
+stroke:white;
+  stroke-width:1px;
+}

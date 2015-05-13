@@ -21,25 +21,12 @@ Integration=(function(){
       integrationNodes:[
       {
         type:"IntegrationNode",
-        on:function(event,callback){
-          if(event=='messageFlowStats'){
-            
-          }else if (event=='resourceStats'){
-            
-          }
-          
-        },
+        name:"NodeA",
         integrationServers:[
         {
           type:"IntegrationServer",
-          name:"MyIntegrationServer",
-          on:function(event,callback){
-            if (event=='resourceStats'){
-              
-            }
-            //TODO onStop
-            
-          },
+          name:"Server1",
+          
           //TODO stop/start
           applications:[          
           {
@@ -51,21 +38,111 @@ Integration=(function(){
             {
               type:"MessageFlow",
               name:"MyMessageFlow",
-              on:function(){
-                
-              },
+              
               stats:[]
             }],
             //TODO integrationNode
-            on:function(eventType,callback){
-              if(eventType=='messageFlowStats'){
-                                  
-              }
-            }
+            
+          }]          
+        },
+        {
+          type:"IntegrationServer",
+          name:"Server2",
+          
+          //TODO stop/start
+          applications:[          
+          {
+          
+            type:"Application",
+            name:"MyApplication",
+            //TODO integrationNode:
+            messageFlows:[
+            {
+              type:"MessageFlow",
+              name:"MyMessageFlow",
+              
+              stats:[]
+            }],
+            //TODO integrationNode
+            
+          },
+          {
+          
+            type:"Application",
+            name:"AnotherApp",
+            //TODO integrationNode:
+            messageFlows:[
+            {
+              type:"MessageFlow",
+              name:"MyMessageFlow",
+              
+              stats:[]
+            }],
+            //TODO integrationNode
+            
+          }
+          ]          
+        }
+        ]
+      },
+      {
+        type:"IntegrationNode",
+        name:"NodeB",
+        integrationServers:[
+        {
+          type:"IntegrationServer",
+          name:"MyIntegrationServer",
+          
+          //TODO stop/start
+          applications:[          
+          {
+          
+            type:"Application",
+            name:"MyApplication",
+            //TODO integrationNode:
+            messageFlows:[
+            {
+              type:"MessageFlow",
+              name:"MyMessageFlow",
+              
+              stats:[]
+            }],
+            //TODO integrationNode
+            
           }]          
         }]
-      }]
+      }
+      ]
     };
+    integrationBus.integrationNodes.forEach(function(integrationNode){
+      integrationNode.on=function(event,callback){
+        if(event=='messageFlowStats'){            
+        }else if (event=='resourceStats'){            
+        }          
+      };
+      integrationNode.integrationServers.forEach(function(integrationServer){
+        integrationServer.on=function(event,callback){
+          if (event=='resourceStats'){
+            
+          }
+          //TODO onStop          
+        };
+        integrationServer.applications.forEach(function(application){
+          application.on=function(eventType,callback){
+            if(eventType=='messageFlowStats'){
+                                
+            }
+          };
+          application.messageFlows.forEach(function(messageFlow){
+            messageFlow.on=function(){
+                
+            };
+            
+          });
+                    
+        });        
+      });
+    });
     return {
       getIntegrationBus:function(){
         return integrationBus;

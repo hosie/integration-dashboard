@@ -3,7 +3,6 @@ includePaho();
 
 (function(){
   //TODO - inject paho?
-  console.log("defining module iibWidgets");
   angular.module('iibWidgets',[])
     .factory('iibSubscriber',iibSubscriber)
     .factory('iibWidgetSpec',iibWidgetSpecFactory)
@@ -11,6 +10,7 @@ includePaho();
     .factory('iibIntegrationBus',iibIntegrationBusFactory)
     .directive('iibFlowMonitoring',['$rootScope','iibSubscriber',iibFlowMonitoringDirective])
     .directive('iibFlowStats', ['$rootScope', 'iibSubscriber','d3Util',iibFlowStatsDirective])
+    .directive('iibSunBurst', ['$rootScope', 'iibSubscriber','d3Util',iibSunBurstDirective])
     .directive('iibWidget',    ['$rootScope', 'iibSubscriber','d3Util',iibWidgetDirective])
     ;
 
@@ -53,7 +53,7 @@ includePaho();
       var factory = this.factories[type];
       if(factory){
         var widget=new factory(options);
-        widget.map=factory.map;
+        widget.map=factory.map || function(integrationBus){return integrationBus;};
         return widget;
       }else{
         return null;
@@ -61,8 +61,94 @@ includePaho();
     }
   };
 
-  /*
-  *  Define the flow stats widget and register it.
+  /*Define the sun burst widget
+  */
+  (function(){
+    // Interpolate the scales!
+    
+    
+    var childrenAccessor=function(d){
+                if(d.type==="MessageFlow")
+                {
+                    return null;
+                }else if (d.type==="Application")
+                {
+                    return d.messageFlows;
+                }else if((d.type==="IntegrationServer")||((d.type==="executionGroup"))){
+                    return d.applications;
+                }else if((d.type==="IntegrationNode")||(d.type==="broker")){
+                    return d.integrationServers;
+                }else if(d.type==="IntegrationBus"){
+                    return d.integrationNodes;
+                }
+                return null;
+            };
+    var sunBurstWidget = function(options){
+      return {
+        aspectRatio : 1,
+        renderStaticD3:function (canvas,data){
+          var radius = canvas.width/2;
+          var x = d3.scale.linear()
+            .range([0, 2 * Math.PI]);
+
+          var y = d3.scale.sqrt()
+            .range([0, radius]);
+            
+          var color = d3.scale.category20c();
+
+          var svg = canvas.svg
+              .append("g")
+              .attr("class","iib-sunburst")
+              .attr("transform", "translate(" + radius + "," + radius  + ")");
+              
+          var partition = d3.layout.partition()
+            .value(function(d) { return 1 /*d.size*/; })
+            .children(childrenAccessor);
+            
+          var arc = d3.svg.arc()
+            .startAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x))); })
+            .endAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x + d.dx))); })
+            .innerRadius(function(d) { return Math.max(0, y(d.y)); })
+            .outerRadius(function(d) { return Math.max(0, y(d.y + d.dy)); });
+            
+          var path = svg.selectAll("path")
+              .data(partition.nodes(data))
+              .enter().append("path")
+              .attr("d", arc)
+              .attr("class", function(d) { 
+                 return "iib-sunburst-" + d.type;
+              })
+              .on("click", click);
+          var title = path.append("title")
+          .text(function(d){return d.name;});
+
+          function arcTween(d) {
+            var xd = d3.interpolate(x.domain(), [d.x, d.x + d.dx]),
+                yd = d3.interpolate(y.domain(), [d.y, 1]),
+                yr = d3.interpolate(y.range(), [d.y ? 20 : 0, radius]);
+            return function(d, i) {
+              return i
+                  ? function(t) { return arc(d); }
+                  : function(t) { x.domain(xd(t)); y.domain(yd(t)).range(yr(t)); return arc(d); };
+            };
+          }
+          function click(d) {
+            path.transition()
+              .duration(750)
+              .attrTween("d", arcTween(d));
+          }            
+        },
+        renderDynamicD3: function (canvas,data){
+        }
+      }     
+    };
+    sunBurstWidget.type="iib-sun-burst";
+    widgetRegistry.register(sunBurstWidget);
+    
+  })();
+  
+  /*Define the flow stats widget and register it.
+  *  
   */
   (function(){
     var flowStatsWidget = function(options){
@@ -134,8 +220,8 @@ includePaho();
     widgetRegistry.register(flowStatsWidget);
   })();
   
-  /*
-  *  Define the circle pack widget and register it.
+  /* Define the circle pack widget and register it.
+  * 
   *    data is an IntegrationBus object
   *    topic is ...
   */
@@ -686,6 +772,27 @@ includePaho();
 
     function link(scope,iElement,iAttrs){
       var widget=widgetRegistry.createWidget("iib-flow-stats",{iibSimulation:scope.iibSimulation});
+      
+      d3Util.renderWidget(widget,iElement);      
+    }    
+  }
+
+  function iibSunBurstDirective($rootScope,iibSubscriber,d3Util){
+    var iibSubscriber=iibSubscriber; 
+    return {
+      restrict: 'AC',
+        //TODO - can we derive these scope attributes from the widgetSpec factory?
+      scope:{
+        iibFlowName:'@',
+        iibMqttHost:'@',
+        iibMqttPort:'@',
+        iibSimulation:'@'
+      },
+      link: link
+    };
+
+    function link(scope,iElement,iAttrs){
+      var widget=widgetRegistry.createWidget("iib-sun-burst",{iibSimulation:scope.iibSimulation});
       
       d3Util.renderWidget(widget,iElement);      
     }    
