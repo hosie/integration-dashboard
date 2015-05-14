@@ -21,7 +21,7 @@ Integration = (function(){
    */
   var PubSub = function(integrationNodeName,host,port){
       this.integrationNodeName  = integrationNodeName;
-      this.mqttClient = new Messaging.Client(host, port, "i-d:"+integrationNodeName.substring(0,18));
+      this.mqttClient = new Paho.MQTT.Client(host, port, "i-d:"+integrationNodeName.substring(0,18));
 
       /** map of topic names to jquery Callbacks objects */
       this.subscriberCallbacks={};   
@@ -43,10 +43,10 @@ Integration = (function(){
        * @param topic {String} name of topic. In general, wildcards 
        *              are not supported. The only exception is the
        *              following 2 special wildcards
-       *                 $SYS/Broker/#/Statistics/JSON/SnapShot/#
+       *                 IBM/IntegrationBus/#/Statistics/JSON/SnapShot/#
        *                 (flowstats)
        *  
-       *                 $SYS/Broker/#/Statistics/JSON/Resource/#
+       *                 IBM/IntegrationBus/#/Statistics/JSON/Resource/#
        *                 (resourceStats)
        *  
        * @param callback {Function} callback to be invoked when a 
@@ -59,12 +59,12 @@ Integration = (function(){
        */
       function on(topic,callback){
           //TODO is it more efficient just to create a new client connection for each wildcard subscription?
-          if(topic==="$SYS/Broker/#/Statistics/JSON/SnapShot/#") {
+          if(topic==="IBM/IntegrationBus/"+this.integrationNodeName+"/Statistics/JSON/SnapShot/+") {
               if(this.flowStatsCallbacks===null){
                   this.flowStatsCallbacks=$.Callbacks();
               }
               this.flowStatsCallbacks.add(callback);
-          }else if(topic==="$SYS/Broker/#/Statistics/JSON/Resource/#"){
+          }else if(topic==="IBM/IntegrationBus/+/Statistics/JSON/Resource/+"){
               if(this.resourceStatsCallbacks===null){
                   this.resourceStatsCallbacks=$.Callbacks();
               }
@@ -79,6 +79,7 @@ Integration = (function(){
       this.on=on;
 
       function onMessageArrived(message){
+        try{
           var topicString = message.destinationName;
           var callbacks = this.subscriberCallbacks[topicString];
           var payloadObj= JSON.parse(message.payloadString);            
@@ -86,17 +87,21 @@ Integration = (function(){
                callbacks.fire(payloadObj);
           }
           if(this.flowStatsCallbacks!=null){
-              var flowStatsHLQ = "$SYS/Broker/" + this.integrationNodeName +"/Statistics/JSON/SnapShot";
+              var flowStatsHLQ = "IBM/IntegrationBus/" + this.integrationNodeName +"/Statistics/JSON/SnapShot";
               if(topicString.substring(0,flowStatsHLQ.length)==flowStatsHLQ) {
                   this.flowStatsCallbacks.fire(payloadObj);
               }
           }
           if(this.resourceStatsCallbacks!=null){
-              var resourceStatsHLQ = "$SYS/Broker/" + this.integrationNodeName +"/Statistics/JSON/Resource";
+              var resourceStatsHLQ = "IBM/IntegrationBus/" + this.integrationNodeName +"/Statistics/JSON/Resource";
               if(topicString.substring(0,resourceStatsHLQ.length)==resourceStatsHLQ) {
                   this.resourceStatsCallbacks.fire(payloadObj);
               }
           }
+        }catch(err){
+          console.log("ERROR in onMessage");
+          console.dir(err);
+        }
       }
       this.mqttClient.onMessageArrived = $.proxy(onMessageArrived,this);
 
@@ -129,9 +134,9 @@ Integration = (function(){
                       onError(responseObject);
               }
           };
-          var flowStatsTopic = "$SYS/Broker/" + this.integrationNodeName + "/Statistics/JSON/SnapShot/#/applications/#/messageflows/#";
+          var flowStatsTopic = "IBM/IntegrationBus/" + this.integrationNodeName + "/Statistics/JSON/+/+/applications/+/messageflows/+";
           this.mqttClient.subscribe(flowStatsTopic,options);
-          var resourceStatsTopic = "$SYS/Broker/" + this.integrationNodeName + "/Statistics/JSON/Resource/#/";
+          var resourceStatsTopic = "IBM/IntegrationBus/" + this.integrationNodeName + "/Statistics/JSON/Resource/+/";
           this.mqttClient.subscribe(resourceStatsTopic,options);    
       };
       this.subscribeToAllTopics=subscribeToAllTopics;
@@ -150,7 +155,7 @@ Integration = (function(){
           callback(null,IntegrationBus.instance);        
       };
 
-      $.getJSON('/apiv1/integrationbus?depth=7',function(result){
+      $.getJSON('/apiv1/integrationbus?depth=8',function(result){
           IntegrationBus.instance=  new IntegrationBus(result);    
           callback(null,IntegrationBus.instance);
           
@@ -252,15 +257,17 @@ Integration = (function(){
            if(eventType=='messageFlowStats') {
                if(this.flowStatsEventHandlers==null) {
                    this.flowStatsEventHandlers=$.Callbacks();
-                   this.pubSub.on("$SYS/Broker/#/Statistics/JSON/SnapShot/#",$.proxy(function(snapShot){
-                       this.flowStatsEventHandlers.fire(snapShot);
+                   this.pubSub.on("IBM/IntegrationBus/"+ this.name +"/Statistics/JSON/SnapShot/+",$.proxy(function(snapShot){
+                    this.flowStatsEventHandlers.fire(snapShot);
                    },this));
                }
+               console.log("adding flow stats event handler");
+               console.dir(this);
                this.flowStatsEventHandlers.add(callback);
            }else if(eventType=='resourceStats') {
                if(this.resourceStatsEventHandlers==null) {
                    this.resourceStatsEventHandlers=$.Callbacks();
-                   this.pubSub.on("$SYS/Broker/#/Statistics/JSON/Resource/#",$.proxy(function(snapShot){
+                   this.pubSub.on("IBM/IntegrationBus/"+ this.name +"/Statistics/JSON/Resource/+",$.proxy(function(snapShot){
                        this.resourceStatsEventHandlers.fire(snapShot);
                    },this));
                }
@@ -342,6 +349,7 @@ Integration = (function(){
       this.name = other.name;
       this.flowStatsTopic=other.flowStatsTopic;
       this.flowStatsEventHandlers=$.Callbacks();
+      this.snapshots=[];
 
       /** provide getter for integration node rather than a
        *  property to avoid cyclic reference propblems   */
@@ -353,7 +361,11 @@ Integration = (function(){
       integrationNode.pubSub.on(this.flowStatsTopic,$.proxy(onStats,this));
       
       function onStats(stats){
-          this.flowStatsEventHandlers.fire(stats);
+        this.snapshots.push(stats);
+        if(this.snapshots.length>MAX_SNAPSHOT_RECORDS){
+          this.snapshots.shift();          
+        }
+        this.flowStatsEventHandlers.fire(stats);
       };
 
       /**
@@ -386,7 +398,8 @@ Integration = (function(){
   };
 
   return{
-      getIntegrationBus : getIntegrationBus
+      getIntegrationBus : getIntegrationBus,
+      onError:onError
   }
 
 })();

@@ -1,18 +1,22 @@
 [
     {
         "host" : "localhost",
-        "port" : 4414,
-        "mqtt" : 1883
+        "port" : 4416,
+        "mqtt" : 4416
     },
     {
-        "host" : "otherhost",
-        "port" : 4414,
-        "mqtt" : 1883
-
+        "host" : "localhost",
+        "port" : 4417,
+        "mqtt" : 4417
     },
     {
-        "host" : "otherhost",
-        "port" : 4415,
-        "mqtt" : 1884
+        "host" : "localhost",
+        "port" : 4418,
+        "mqtt" : 4418
+    },
+    {
+        "host" : "localhost",
+        "port" : 4419,
+        "mqtt" : 4419
     }
 ]

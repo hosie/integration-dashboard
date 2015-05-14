@@ -7,7 +7,7 @@ includePaho();
     .factory('iibSubscriber',iibSubscriber)
     .factory('iibWidgetSpec',iibWidgetSpecFactory)
     .factory('d3Util',d3UtilFactory)
-    .factory('iibIntegrationBus',iibIntegrationBusFactory)
+    .factory('iibIntegrationBusProvider',iibIntegrationBusFactory)
     .directive('iibFlowMonitoring',['$rootScope','iibSubscriber',iibFlowMonitoringDirective])
     .directive('iibFlowStats', ['$rootScope', 'iibSubscriber','d3Util',iibFlowStatsDirective])
     .directive('iibSunBurst', ['$rootScope', 'iibSubscriber','d3Util',iibSunBurstDirective])
@@ -360,7 +360,7 @@ includePaho();
     widgetRegistry.register(circlePackWidget);
   })();  
 
-  function d3UtilFactory(iibIntegrationBus){
+  function d3UtilFactory(iibIntegrationBusProvider){
     function createCanvas(element, options) {
   	  var fullWidth = d3.select(element).node().offsetWidth;
       
@@ -406,32 +406,40 @@ includePaho();
         aspectRatio : widget.aspectRatio
       };
       var canvas = createCanvas(iElement[0],canvasOptions);
+      iibIntegrationBusProvider.ready(function(err,integrationBus){
+        
       
-      var data = widget.map(iibIntegrationBus);
+      
+        var data = widget.map(integrationBus);
+            
+        widget.renderStaticD3(canvas,data);
+        integrationBus.integrationNodes.forEach(function(integrationNode){
+          integrationNode.on('messageFlowStats',function(){
+            var data = widget.map(integrationBus);          
+            widget.renderDynamicD3(canvas,data);          
+          });
           
-      widget.renderStaticD3(canvas,data);
-      
-      if (widget.iibSimulation){
+        });
+        
+        if (widget.iibSimulation){
 
-        iibIntegrationBus.on('messageFlowStats',{/*TODO flow name*/},function(){
-          var data = widget.map(iibIntegrationBus);          
-          widget.renderDynamicD3(canvas,data);          
-        });
-        
-        
-      }else{
-        //TODO get topic from widget - even better, get metric names ( eg. flow.cpu...) from widget and use separate facotry to convert to topic
-        
-        /*var topic = "IBM/IntegrationBus/TESTNODE_John/Statistics/JSON/+/+/applications/+/messageflows/" + scope.iibFlowName;
-        iibSubscriber.subscribe(topic,scope,function(message){
-          //TODO map message to data format required by widget.
-          //who provides the mapping function?  For now, the widget but lets separate that out so that the widget just says the metric that they want (e.g. flow.cpu)
-          //widget.onMessageArrived(message);
-        });
-        console.log("simulation off");
-        console.dir(scope);
-        */
-      }
+          
+          
+          
+        }else{
+          //TODO get topic from widget - even better, get metric names ( eg. flow.cpu...) from widget and use separate facotry to convert to topic
+          
+          /*var topic = "IBM/IntegrationBus/TESTNODE_John/Statistics/JSON/+/+/applications/+/messageflows/" + scope.iibFlowName;
+          iibSubscriber.subscribe(topic,scope,function(message){
+            //TODO map message to data format required by widget.
+            //who provides the mapping function?  For now, the widget but lets separate that out so that the widget just says the metric that they want (e.g. flow.cpu)
+            //widget.onMessageArrived(message);
+          });
+          console.log("simulation off");
+          console.dir(scope);
+          */
+        }
+      });
     }
     return {
       renderWidget:renderWidget      
@@ -874,7 +882,27 @@ includePaho();
   function iibIntegrationBusFactory(){
     console.log("real integration bus");
     //TODO inject paho and bring in IntegrationBus.js from the master branch
-    var integrationBus = window.Integration.getIntegrationBus();
+    var integrationBus = {
+      obj:null,
+      waiters:[],
+      ready:function(callback){        
+        if(this.obj!=null){
+          callback(null,obj);
+        }else{
+          this.waiters.push(callback);          
+        }
+      }
+    };
+    window.Integration.getIntegrationBus(function(err,obj){
+      console.dir(obj);
+      integrationBus.obj=obj;
+      integrationBus.waiters.forEach(function(waiter){
+        waiter(err,obj);        
+        
+      });
+      integrationBus.waiters=[];
+      
+    });
     return integrationBus;
     
   }

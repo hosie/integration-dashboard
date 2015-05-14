@@ -144,7 +144,7 @@ function getIntegrationBus(request,reply){
                   //drill down and enrich the flow objects with topic names for flow stats
                   integrationServer.applications.application.forEach(function(application){
                       application.messageFlows.messageFlow.forEach(function(messageFlow){
-                          var topic="$SYS/Broker/" + nextNode.name +
+                          var topic="IBM/IntegrationBus/" + nextNode.name +
                                "/Statistics/JSON/SnapShot/" + integrationServer.name +
                                "/applications/" + application.name +
                                "/messageflows/" + messageFlow.name;

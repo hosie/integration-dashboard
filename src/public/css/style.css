@@ -80,19 +80,19 @@ path.area {
 }
 
 .iib-sunburst-IntegrationNode{
-  fill:  #8CDCF8;
+  fill:  #00B0DA;
 }
 
 .iib-sunburst-IntegrationServer{
-  fill:  #BADD8C;
+  fill:  #66D0E9;
 }
 
 .iib-sunburst-Application{
-  fill:  #FBF498;
+  fill:  #17AF4B;
 }
 
 .iib-sunburst-MessageFlow{
-  fill:  #F7BC7D;
+  fill:  #74CF93;
 }
 
 .iib-sunburst path{
