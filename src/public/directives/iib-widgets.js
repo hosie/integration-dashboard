@@ -174,20 +174,29 @@ includePaho();
     
   })();
   
-  /*Define the flow stats widget and register it.
-  *  
+  
+  /*  Define the flow stats widget and register it.
   */
   (function(){
+          
+    var timeFormatter;
+    
     var flowStatsWidget = function(options){
       return {
-        iibSimulation:options.iibSimulation || false,
+        iibSimulation : options.iibSimulation || false,
+        iibFlowName   : options.iibFlowName   || null,
         aspectRatio : 1,
         renderStaticD3:function (canvas,data){
-          
+          timeFormatter = d3.time.format("%X");
           canvas.svg
           .attr('class','iib-chart');
 
-          this.maxY    = d3.max(data.map(function(item){return item.TotalInputMessages}))|1;
+          this.maxY    = d3.max(data.map(function(item){
+            return d3.max(item.map(function(item){
+              return item.TotalInputMessages;
+            }));
+          }))||1;
+            
           this.y         = d3.scale.linear()
                         .domain([0, this.maxY])
                         .range([canvas.height, 0]);
@@ -196,9 +205,22 @@ includePaho();
                           .orient('left')
                           .ticks(5);
 
+          var xMin = d3.min(data.map(function(item){
+            return d3.min(item.map(function(item){
+              var timeSubstring = item.EndTime.substring(0,8);
+              var time=timeFormatter.parse(timeSubstring);
+              return time;
+            }));
+          }))||new Date();
+          var xMax = d3.max(data.map(function(item){
+            return d3.max(item.map(function(item){
+              return timeFormatter.parse(item.EndTime.substring(0,8));
+            }));
+          }))||new Date();
+          
           //console.log("maxY=",this.maxY);
           this.x         = d3.scale.linear()
-                      .domain([0, data.length])
+                      .domain([xMin, xMax])
                       .range([0, canvas.width]);
 
           this.yAxisGroup = canvas.svg.append('g')
@@ -208,41 +230,82 @@ includePaho();
 
           var self=this;
           this.line    = d3.svg.line()
-                          .interpolate('cardinal')
-                          .x(function(d,i){return self.x(i);})
+                          .interpolate('basis')
+                          .x(function(d,i){
+                            var xValue=self.x(timeFormatter.parse(d.EndTime.substring(0,8)));
+                            return xValue;
+                          })
                           .y(function(d,i){
-                            return self.y(d.TotalInputMessages);});
+                            var yValue = self.y(d.TotalInputMessages);
+                            return yValue;
+                          });
                           
-          this.path    = canvas.svg.append('svg:path')
-                            .attr('class','dataLine')
-                            .data([data])
-                            .attr('d', this.line)
-                            .attr('fill', 'none')
-                            .attr('stroke-width', '1')
-                            .attr('stroke','#000');
+          this.path=canvas.svg.selectAll(".dataLine");
+          this.update = this.path.data(data);
+          this.update.enter().append('svg:path')
+                    .attr('class','dataLine')
+                    .attr('d', this.line)
+                    .attr('fill', 'none')
+                    .attr('stroke-width', '1')
+                    .attr('stroke','#000');
+          this.update.exit().remove();
         },
         renderDynamicD3: function (canvas,data){
 
-          this.x.domain([0,data.length]);
-          this.maxY    = d3.max(data.map(function(item){return item.TotalInputMessages}))|1;
+          var xMin = d3.min(data.map(function(item){
+            return d3.min(item.map(function(item){
+              var timeSubstring = item.EndTime.substring(0,8);
+              var time=timeFormatter.parse(timeSubstring);
+              return time;
+            }));
+          }))||new Date();
+          var xMax = d3.max(data.map(function(item){
+            return d3.max(item.map(function(item){
+              return timeFormatter.parse(item.EndTime.substring(0,8));
+            }));
+          }))||new Date();
+          
+          this.x.domain([xMin, xMax]);
+          this.maxY    = d3.max(data.map(function(item){
+            return d3.max(item.map(function(item){
+              return item.TotalInputMessages;
+            }));
+          }))||1;
+          
           this.y.domain([0, this.maxY]);
 
           this.yAxis.scale(this.y);
           this.yAxisGroup.call(this.yAxis);
-          this.path
-            .attr('d',this.line);
+          canvas.svg.selectAll(".dataLine").remove();
+          this.update = this.path.data(data);
+          this.update.enter().append('svg:path')
+                    .attr('class','dataLine')
+                    .attr('d', this.line)
+                    .attr('fill', 'none')
+                    .attr('stroke-width', '1')
+                    .attr('stroke','#000');
+          this.update.exit().remove();
+
 
         }        
       }
     };
     flowStatsWidget.type="iib-flow-stats";
-    flowStatsWidget.map=function(integrationBus,options){
-        return  integrationBus
-                  .integrationNodes[0]
-                  .integrationServers[0]
-                  .applications[0]
-                  .messageFlows[0]
-                  .stats;
+    flowStatsWidget.map=function(integrationBus){
+        //return an array of arrays.
+        // the inner array is the array of snapshots, the outer array contains one of those for each instance of the flow
+        var flowName = this.iibFlowName;
+        if(flowName==undefined) {
+          return [[]];
+        }
+        else{
+          var flowInstances = integrationBus.getFlowInstances(flowName);
+          return flowInstances.map(function(flowInstance){ 
+            return flowInstance.snapshots.map(function(snapshot){
+              return snapshot.WMQIStatisticsAccounting.MessageFlow;
+            });
+          });
+        }        
       };
     widgetRegistry.register(flowStatsWidget);
   })();
@@ -806,7 +869,7 @@ includePaho();
     };
 
     function link(scope,iElement,iAttrs){
-      var widget=widgetRegistry.createWidget("iib-flow-stats",{iibSimulation:scope.iibSimulation});
+      var widget=widgetRegistry.createWidget("iib-flow-stats",scope);
       
       d3Util.renderWidget(widget,iElement);      
     }    
@@ -827,7 +890,7 @@ includePaho();
     };
 
     function link(scope,iElement,iAttrs){
-      var widget=widgetRegistry.createWidget("iib-sun-burst",{iibSimulation:scope.iibSimulation});
+      var widget=widgetRegistry.createWidget("iib-sun-burst",scope);
       
       d3Util.renderWidget(widget,iElement);      
     }    

@@ -201,6 +201,14 @@ Integration = (function(){
       other.integrationNodes.integrationNode.forEach(function(nextIntegrationNode){
           this.integrationNodes.push(new IntegrationNode(nextIntegrationNode));
       },this);
+      
+      this.getFlowInstances=function(flowName){
+        var flowInstances =[];
+        this.integrationNodes.forEach(function(integrationNode){
+          flowInstances = flowInstances.concat(integrationNode.getFlowInstances(flowName));
+        });
+        return flowInstances;
+      };
 
       
   };
@@ -235,6 +243,13 @@ Integration = (function(){
                   onError("error connecting to pubSub for " + this.name,error);
               }        
       });
+      this.getFlowInstances=function(flowName){
+        var flowInstances =[];
+        this.integrationServers.forEach(function(integrationServer){
+          flowInstances = flowInstances.concat(integrationServer.getFlowInstances(flowName));
+        });
+        return flowInstances;
+      };
 
       other.integrationServers.integrationServer.forEach(function(nextIntegrationServer){
           this.integrationServers.push(new IntegrationServer(nextIntegrationServer,this));
@@ -302,6 +317,17 @@ Integration = (function(){
       };
 
       this.applications = [];
+      this.getFlowInstances=function(flowName){
+        var flowInstances =[];
+        this.applications.forEach(function(application){
+          var flow = application.getMessageFlow(flowName);
+          if(flow ){
+            flowInstances.push(flow);            
+          }          
+        });
+        return flowInstances;
+      };
+      
       other.applications.application.forEach(function(nextApplication){
           this.applications.push(new Application(nextApplication,integrationNode));
       },this);
@@ -328,6 +354,16 @@ Integration = (function(){
           return integrationNode;
       };
       this.messageFlows = [];
+      this.getMessageFlow=function(flowName){
+        var messageFlow=null;
+        this.messageFlows.forEach(function(nextMessageFlow){
+          if(nextMessageFlow.name==flowName){
+            messageFlow=nextMessageFlow;
+          }
+        });
+        return messageFlow;
+      };
+      
       other.messageFlows.messageFlow.forEach(function(nextMessageFlow){
           this.messageFlows.push(new MessageFlow(nextMessageFlow,integrationNode));
       },this);
