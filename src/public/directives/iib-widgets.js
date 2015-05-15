@@ -68,60 +68,87 @@ includePaho();
     
     
     var childrenAccessor=function(d){
-                if(d.type==="MessageFlow")
-                {
-                    return null;
-                }else if (d.type==="Application")
-                {
-                    return d.messageFlows;
-                }else if((d.type==="IntegrationServer")||((d.type==="executionGroup"))){
-                    return d.applications;
-                }else if((d.type==="IntegrationNode")||(d.type==="broker")){
-                    return d.integrationServers;
-                }else if(d.type==="IntegrationBus"){
-                    return d.integrationNodes;
-                }
-                return null;
-            };
+        if(d.type==="MessageFlow")
+        {
+            return null;
+        }else if (d.type==="Application")
+        {
+            return d.messageFlows;
+        }else if((d.type==="IntegrationServer")||((d.type==="executionGroup"))){
+            return d.applications;
+        }else if((d.type==="IntegrationNode")||(d.type==="broker")){
+            return d.integrationServers;
+        }else if(d.type==="IntegrationBus"){
+            return d.integrationNodes;
+        }
+        return null;
+    };
+    var valueFunction=function(d){
+      if (d.snapshots && d.snapshots.length>0){
+                
+        //baseline at 0.1 seconds
+        return 100000 + d.snapshots[d.snapshots.length-1].WMQIStatisticsAccounting.MessageFlow.TotalCPUTime;
+        
+      }else{
+        return 1;                
+      }
+      
+    };
     var sunBurstWidget = function(options){
       return {
         aspectRatio : 1,
         renderStaticD3:function (canvas,data){
-          var radius = canvas.width/2;
+          this.radius = canvas.width/2;
           var x = d3.scale.linear()
             .range([0, 2 * Math.PI]);
 
           var y = d3.scale.sqrt()
-            .range([0, radius]);
+            .range([0, this.radius]);
             
           var color = d3.scale.category20c();
 
-          var svg = canvas.svg
-              .append("g")
-              .attr("class","iib-sunburst")
-              .attr("transform", "translate(" + radius + "," + radius  + ")");
               
-          var partition = d3.layout.partition()
-            .value(function(d) { return 1 /*d.size*/; })
+          this.partition = d3.layout.partition()
+            .value(valueFunction)
             .children(childrenAccessor);
             
-          var arc = d3.svg.arc()
+          this.arc = d3.svg.arc()
             .startAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x))); })
             .endAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x + d.dx))); })
             .innerRadius(function(d) { return Math.max(0, y(d.y)); })
             .outerRadius(function(d) { return Math.max(0, y(d.y + d.dy)); });
+                      
+        },
+        renderDynamicD3: function (canvas,data){
+          if(this.svg){
+            this.svg.remove();
             
-          var path = svg.selectAll("path")
-              .data(partition.nodes(data))
-              .enter().append("path")
-              .attr("d", arc)
+          }          
+          this.svg = canvas.svg
+              .append("g")
+              .attr("class","iib-sunburst")
+              .attr("transform", "translate(" + this.radius + "," + this.radius  + ")");
+          
+          this.path = this.svg.selectAll("path").remove();
+          this.pathSets = this.path.data(this.partition.nodes(data));
+              
+          this.pathSets.enter().append("path")
+              .attr("d", this.arc)
               .attr("class", function(d) { 
                  return "iib-sunburst-" + d.type;
               })
-              .on("click", click);
-          var title = path.append("title")
-          .text(function(d){return d.name;});
-
+              .on("click", click)
+              .append("title")
+              .text(function(d){
+                if (d.type=="MessageFlow"){
+                  return d.name + "(" + valueFunction(d) + ")";              
+                }else{
+                  return d.name;              
+                  }
+              });
+          
+          this.pathSets.exit().remove();
+          var arc = this.arc;
           function arcTween(d) {
             var xd = d3.interpolate(x.domain(), [d.x, d.x + d.dx]),
                 yd = d3.interpolate(y.domain(), [d.y, 1]),
@@ -132,13 +159,13 @@ includePaho();
                   : function(t) { x.domain(xd(t)); y.domain(yd(t)).range(yr(t)); return arc(d); };
             };
           }
+          var path=this.path;
           function click(d) {
             path.transition()
               .duration(750)
               .attrTween("d", arcTween(d));
-          }            
-        },
-        renderDynamicD3: function (canvas,data){
+          }
+              
         }
       }     
     };

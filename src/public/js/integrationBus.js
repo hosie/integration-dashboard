@@ -12,6 +12,7 @@ Author John Hosie
 */
 
 Integration = (function(){
+  var MAX_SNAPSHOT_RECORDS=100;
   /**
    * internal functions to manage the MQTT connnections and 
    * subscription 
