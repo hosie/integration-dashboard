@@ -87,7 +87,7 @@ includePaho();
       if (d.snapshots && d.snapshots.length>0){
                 
         //baseline at 0.1 seconds
-        return 100000 + d.snapshots[d.snapshots.length-1].WMQIStatisticsAccounting.MessageFlow.TotalCPUTime;
+        return 1000 + d.snapshots[d.snapshots.length-1].WMQIStatisticsAccounting.MessageFlow.TotalCPUTime;
         
       }else{
         return 1;                
@@ -914,7 +914,7 @@ includePaho();
       waiters:[],
       ready:function(callback){        
         if(this.obj!=null){
-          callback(null,obj);
+          callback(null,this.obj);
         }else{
           this.waiters.push(callback);          
         }
