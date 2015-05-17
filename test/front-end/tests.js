@@ -9,6 +9,23 @@ afterEach(function(done){
     done();
 });*/
 
+
+describe('IntegrationBusSimulation', function(){
+    this.timeout(30000);
+    it('should not barf',function(done){
+      Integration.simulateIntegrationBus(function(error,integrationBus){
+            integrationBus.should.have.property('type','IntegrationBus');
+            integrationBus.should.be.instanceof(IntegrationBus);
+            if(error==null) {
+                done();          
+            }else{
+                throw error;
+            }
+      });      
+    });    
+});
+
+
 describe('IntegrationBus', function(){
     this.timeout(30000);
     it('should not barf',function(done){
@@ -166,6 +183,8 @@ describe('Application', function(){
 });
 
 describe('MessageFlow', function(){
+  
+
   this.timeout(25000);
 
   var messageFlow;
@@ -204,3 +223,4 @@ describe('MessageFlow', function(){
       messageFlow.getIntegrationNode().should.equal(integrationNode);
   });
 });
+

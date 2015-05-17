@@ -166,6 +166,17 @@ Integration = (function(){
       });
       
   }
+  
+
+  function simulateIntegrationBus(callback){
+      var instance = new IntegrationBusSimulation();    
+      var node1        = instance.addIntegrationNode("Node1");
+      var server1      = node1.addIntegrationServer("Server1");
+      var application1 = server1.addApplication("Application1");
+      var flow1        = application1.addMessageFlow("Flow1");
+      
+      callback(null,instance);
+  }
 
   function onError(message,error){
           console.log("onError");
@@ -185,11 +196,7 @@ Integration = (function(){
    * @private  
    */
   IntegrationBus = function(other){
-      //ensure singleton use
-      if (this.instance!=undefined){
-          throw "IntegrationBus must be a singleton";
-      };    
-
+      
       /**
        * type is always set to IntegrationBus. 
        * @member 
@@ -197,11 +204,6 @@ Integration = (function(){
        */
       this.type = "IntegrationBus";    
       this.integrationNodes = [];
-
-      other.integrationNodes.integrationNode.forEach(function(nextIntegrationNode){
-          this.integrationNodes.push(new IntegrationNode(nextIntegrationNode));
-      },this);
-      
       this.getFlowInstances=function(flowName){
         var flowInstances =[];
         this.integrationNodes.forEach(function(integrationNode){
@@ -209,7 +211,22 @@ Integration = (function(){
         });
         return flowInstances;
       };
+      
+      if(other===undefined){
+        //nothing else to do 
+        return;
+        
+      }
 
+      
+      //ensure singleton use
+      if (this.instance!=undefined){
+          throw "IntegrationBus must be a singleton";
+      };
+      
+      other.integrationNodes.integrationNode.forEach(function(nextIntegrationNode){
+          this.integrationNodes.push(new IntegrationNode(nextIntegrationNode));
+      },this);
       
   };
 
@@ -434,8 +451,32 @@ Integration = (function(){
 
   };
 
+  IntegrationBusSimulation = function(){
+    this.addIntegrationNode=function(name){
+      return {
+        addIntegrationServer:function(name){
+          return {
+            addApplication : function(name){
+              return {
+                addMessageFlow : function(name){
+                  return {
+                    
+                  }
+                }                
+              };
+            }
+          };
+        }        
+      };
+    };   
+  }
+  
+  IntegrationBusSimulation.prototype=new IntegrationBus();
+  
+  
   return{
       getIntegrationBus : getIntegrationBus,
+      simulateIntegrationBus : simulateIntegrationBus,
       onError:onError
   }
 
