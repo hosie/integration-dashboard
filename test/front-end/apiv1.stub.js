@@ -66,19 +66,20 @@ function APIv1Stub(){
         console.log(str);
     }
     var stub = sinon.fakeServer.create();
-    stub.respondWith("GET", "/apiv1/integrationbus?depth=7",integrationBus);    
+    stub.respondWith("GET", "/apiv1/integrationbus?depth=8",integrationBus);    
     stub.autoRespond=true;
     
     return stub;
 }
 
-Messaging = (function(){
+var Paho ={};
+Paho.MQTT = (function(){
     function client(){
         console.log("constructor");
         function publish(){
             console.log("publish");
             var message = {
-                    destinationName :"$SYS/Broker/TESTNODE_Administrator/Statistics/JSON/SnapShot/default/applications/Hosie_HTTP one-way/messageFlows/RecordDistributor",
+                    destinationName :"IBM/IntegrationBus/TESTNODE_Administrator/Statistics/JSON/SnapShot/default/applications/Hosie_HTTP one-way/messageFlows/RecordDistributor",
                     payloadString   : JSON.stringify(
                       {
                         WMQIStatisticsAccounting : {
