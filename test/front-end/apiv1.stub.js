@@ -48,7 +48,7 @@
                                  runMode: "running",
                                  startMode: "Maintained",
                                  flowDesignUri: "/apiv1/executiongroups/default/applications/Hosie_HTTP%20one-way/messageflows/RecordDistributor/flowdesign",                                                              
-                                 flowStatsTopic: "$SYS/Broker/TESTNODE_Administrator/Statistics/JSON/SnapShot/default/applications/Hosie_HTTP one-way/messageFlows/RecordDistributor"
+                                 flowStatsTopic: "IBM/IntegrationBus/TESTNODE_Administrator/Statistics/JSON/SnapShot/default/applications/Hosie_HTTP one-way/messageFlows/RecordDistributor"
                              }]
                          }
                      }]
