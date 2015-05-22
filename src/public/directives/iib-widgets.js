@@ -34,9 +34,9 @@ includePaho();
                    The structure of this parameter is determined by the map field of the factory
           Returns : an instance widget object          
             {
-              renderStaticD3 : function(canvas,data)
+              init : function(canvas,data)
                 Called once per widget object instance to initialise the D3 elements that will not vary
-              renderDynamicD3 : function(canvas,data)
+              draw : function(canvas,data)
                 Called whenever the bound data changes.
             }
           Properties
@@ -44,7 +44,7 @@ includePaho();
             map         : function(IntegrationBus,options)
               Convert the IntegrationBus object to the format of data required. This can be a function provided, specifically for use with this widget or can be one of the general map functions provided by d3Util facotry
             TODO - probably need some way to indicate when to call renderDymanic - no point redrawing a chart for every publication if it is not renedering any data that was altered in that publication.  
-                   This is purely a performance optimisation and would really only benefit charts that are static so maybe we just need to no-op the renderDynamicD3 function if the chart is static
+                   This is purely a performance optimisation and would really only benefit charts that are static so maybe we just need to no-op the draw function if the chart is static
     */
     register:function(widgetFactory){
       this.factories[widgetFactory.type]=widgetFactory;
@@ -97,7 +97,7 @@ includePaho();
     var sunBurstWidget = function(options){
       return {
         aspectRatio : 1,
-        renderStaticD3:function (canvas,data){
+        init:function (canvas,data){
           this.radius = canvas.width/2;
           var x = d3.scale.linear()
             .range([0, 2 * Math.PI]);
@@ -119,7 +119,7 @@ includePaho();
             .outerRadius(function(d) { return Math.max(0, y(d.y + d.dy)); });
                       
         },
-        renderDynamicD3: function (canvas,data){
+        draw: function (canvas,data){
           if(this.svg){
             this.svg.remove();
             
@@ -186,7 +186,7 @@ includePaho();
         iibSimulation : options.iibSimulation || false,
         iibFlowName   : options.iibFlowName   || null,
         aspectRatio : 1,
-        renderStaticD3:function (canvas,data){
+        init:function (canvas,data){
           timeFormatter = d3.time.format("%X");
           canvas.svg
           .attr('class','iib-chart');
@@ -250,7 +250,7 @@ includePaho();
                     .attr('stroke','#000');
           this.update.exit().remove();
         },
-        renderDynamicD3: function (canvas,data){
+        draw: function (canvas,data){
 
           var xMin = d3.min(data.map(function(item){
             return d3.min(item.map(function(item){
@@ -360,7 +360,7 @@ includePaho();
         },
         iibSimulation:options.iibSimulation || false,
         aspectRatio : 1,
-        renderStaticD3:function (canvas){
+        init:function (canvas){
           canvas.svg
           .attr('class','iib-chart');
           //create a new d3 pack and 
@@ -441,7 +441,7 @@ includePaho();
 
           node.exit().remove();
         },
-        renderDynamicD3: function (canvas){
+        draw: function (canvas){
           
         }        
       }
@@ -502,11 +502,11 @@ includePaho();
       
         var data = widget.map(integrationBus);
             
-        widget.renderStaticD3(canvas,data);
+        widget.init(canvas,data);
         integrationBus.integrationNodes.forEach(function(integrationNode){
           integrationNode.on('messageFlowStats',function(){
             var data = widget.map(integrationBus);          
-            widget.renderDynamicD3(canvas,data);          
+            widget.draw(canvas,data);          
           });
           
         });
