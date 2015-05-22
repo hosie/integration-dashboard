@@ -1,6 +1,7 @@
 (function(){
   var testApp = angular.module("ManualTestApp",['ngRoute','iibWidgets']);
-  testApp.config(function($routeProvider){
+  testApp.config(function($routeProvider,iibIntegrationBusProvider){
+    iibIntegrationBusProvider.simulate(true);
     $routeProvider
     .when('/flowStats',
           {

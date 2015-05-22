@@ -28,7 +28,8 @@
     -->
     <script src="/prereqs/angular-bootstrap/ui-bootstrap-tpls.js"></script>
     <script src="/prereqs/d3/d3.min.js"></script>
-    
+    <script src="//code.jquery.com/jquery-1.10.2.js"></script>
+    <script src="/js/integrationBus.js"></script>
 
   </head>
   <body ng-app="HelloAngular" ng-controller="MainController">
@@ -101,8 +102,7 @@
               console.log("Using flow tester");
 
               $scope.attributesForGeneric={
-                iibFlowName : "genericFlowName",
-                iibSimulation: "true"
+                iibFlowName : "genericFlowName"
               };
 
               $scope.editMode=false;

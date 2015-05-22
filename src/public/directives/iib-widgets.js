@@ -7,7 +7,7 @@ includePaho();
     .factory('iibSubscriber',iibSubscriber)
     .factory('iibWidgetSpec',iibWidgetSpecFactory)
     .factory('d3Util',d3UtilFactory)
-    .factory('iibIntegrationBusProvider',iibIntegrationBusFactory)
+    .provider('iibIntegrationBus',iibIntegrationBusProviderFunction)
     .directive('iibFlowMonitoring',['$rootScope','iibSubscriber',iibFlowMonitoringDirective])
     .directive('iibFlowStats', ['$rootScope', 'iibSubscriber','d3Util',iibFlowStatsDirective])
     .directive('iibSunBurst', ['$rootScope', 'iibSubscriber','d3Util',iibSunBurstDirective])
@@ -87,7 +87,7 @@ includePaho();
       if (d.snapshots && d.snapshots.length>0){
                 
         //baseline at 0.1 seconds
-        return 1000 + d.snapshots[d.snapshots.length-1].WMQIStatisticsAccounting.MessageFlow.TotalCPUTime;
+        return 10 + d.snapshots[d.snapshots.length-1].WMQIStatisticsAccounting.MessageFlow.TotalCPUTime;
         
       }else{
         return 1;                
@@ -122,7 +122,6 @@ includePaho();
         draw: function (canvas,data){
           if(this.svg){
             this.svg.remove();
-            
           }          
           this.svg = canvas.svg
               .append("g")
@@ -450,7 +449,7 @@ includePaho();
     widgetRegistry.register(circlePackWidget);
   })();  
 
-  function d3UtilFactory(iibIntegrationBusProvider){
+  function d3UtilFactory(iibIntegrationBus){
     function createCanvas(element, options) {
   	  var fullWidth = d3.select(element).node().offsetWidth;
       
@@ -496,13 +495,14 @@ includePaho();
         aspectRatio : widget.aspectRatio
       };
       var canvas = createCanvas(iElement[0],canvasOptions);
-      iibIntegrationBusProvider.ready(function(err,integrationBus){
+      iibIntegrationBus.ready(function(err,integrationBus){
         
       
       
         var data = widget.map(integrationBus);
             
         widget.init(canvas,data);
+        widget.draw(canvas,data);
         integrationBus.integrationNodes.forEach(function(integrationNode){
           integrationNode.on('messageFlowStats',function(){
             var data = widget.map(integrationBus);          
@@ -969,32 +969,38 @@ includePaho();
     };   
   }
   
-  function iibIntegrationBusFactory(){
-    console.log("real integration bus");
-    //TODO inject paho and bring in IntegrationBus.js from the master branch
-    var integrationBus = {
-      obj:null,
-      waiters:[],
-      ready:function(callback){        
-        if(this.obj!=null){
-          callback(null,this.obj);
-        }else{
-          this.waiters.push(callback);          
-        }
-      }
+  function iibIntegrationBusProviderFunction(){
+    this._simulate=false;
+    this.simulate=function(doSimulate){
+      this._simulate=doSimulate;
     };
-    window.Integration.getIntegrationBus(function(err,obj){
-      console.dir(obj);
-      integrationBus.obj=obj;
-      integrationBus.waiters.forEach(function(waiter){
-        waiter(err,obj);        
-        
-      });
-      integrationBus.waiters=[];
-      
-    });
-    return integrationBus;
-    
+    this.$get=function(){      
+      //TODO inject paho
+      var integrationBus = {
+        obj:null,
+        waiters:[],
+        ready:function(callback){        
+          if(this.obj!=null){
+            callback(null,this.obj);
+          }else{
+            this.waiters.push(callback);          
+          }
+        }
+      };
+      function onLoad(err,obj){
+        integrationBus.obj=obj;
+        integrationBus.waiters.forEach(function(waiter){
+          waiter(err,obj);
+        });
+        integrationBus.waiters=[];
+      }
+      if(this._simulate) {
+        window.Integration.simulateIntegrationBus(onLoad);
+      }else{
+        window.Integration.getIntegrationBus(onLoad);
+      }
+      return integrationBus;
+    };        
   }
 })();
 

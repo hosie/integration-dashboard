@@ -169,12 +169,35 @@ Integration = (function(){
   
 
   function simulateIntegrationBus(callback){
-      var instance = new IntegrationBusSimulation();    
-      var node1        = instance.addIntegrationNode("Node1");
-      var server1      = node1.addIntegrationServer("Server1");
-      var application1 = server1.addApplication("Application1");
-      var flow1        = application1.addMessageFlow("Flow1");
+      var instance      = new IntegrationBusSimulation();    
       
+      var node1         = instance.addIntegrationNode("Node1");
+      
+      var server11      = node1.addIntegrationServer("Server11");
+      var server12      = node1.addIntegrationServer("Server12");
+      
+      var application111  = server11.addApplication("Application111");
+      var application112  = server11.addApplication("Application112");
+      var application121  = server12.addApplication("Application121");
+      var application122  = server12.addApplication("Application122");
+      
+      var flow1111         = application111.addMessageFlow("Flow1111");
+      var flow1112        =  application111.addMessageFlow("Flow1112");
+      var flow1121         = application112.addMessageFlow("Flow1111");
+      var flow1122        =  application112.addMessageFlow("Flow1112");
+      
+      var flow1211         = application121.addMessageFlow("Flow1211");
+      var flow1212         = application121.addMessageFlow("Flow1212");
+      var flow1221         = application122.addMessageFlow("Flow1221");
+      var flow1222         = application122.addMessageFlow("Flow1222");
+      
+      
+      /*
+      var node2           = instance.addIntegrationNode("Node2");
+      var server21        = node2.addIntegrationServer("Server21");
+      var application211  = server21.addApplication("Application221");
+      var flow2111        = application211.addMessageFlow("Flow2111");
+      */
       callback(null,instance);
   }
 
@@ -246,20 +269,11 @@ Integration = (function(){
        * @name type
        *  
        */
+       
       this.type = "IntegrationNode";
-      this.name = other.name;
       this.integrationServers=[];
-      this.host = other.host;
-      this.mqtt = other.mqtt;
       this.flowStatsEventHandlers=null;
       this.resourceStatsEventHandlers=null;
-      this.pubSub = new PubSub( this.name,this.host,this.mqtt);
-      this.pubSub.connect(
-          function(error){
-              if(error) {
-                  onError("error connecting to pubSub for " + this.name,error);
-              }        
-      });
       this.getFlowInstances=function(flowName){
         var flowInstances =[];
         this.integrationServers.forEach(function(integrationServer){
@@ -267,6 +281,22 @@ Integration = (function(){
         });
         return flowInstances;
       };
+      
+      if(other===undefined){
+        //nothing else to do 
+        return;        
+      }
+      this.name = other.name;
+      this.host = other.host;
+      this.mqtt = other.mqtt;
+      this.pubSub = new PubSub( this.name,this.host,this.mqtt);
+      this.pubSub.connect(
+          function(error){
+              if(error) {
+                  onError("error connecting to pubSub for " + this.name,error);
+              }        
+      });
+      
 
       other.integrationServers.integrationServer.forEach(function(nextIntegrationServer){
           this.integrationServers.push(new IntegrationServer(nextIntegrationServer,this));
@@ -294,8 +324,6 @@ Integration = (function(){
                     this.flowStatsEventHandlers.fire(snapShot);
                    },this));
                }
-               console.log("adding flow stats event handler");
-               console.dir(this);
                this.flowStatsEventHandlers.add(callback);
            }else if(eventType=='resourceStats') {
                if(this.resourceStatsEventHandlers==null) {
@@ -326,13 +354,11 @@ Integration = (function(){
        *  
        */
       this.type = "IntegrationServer";
-      this.name = other.name;
       /** provide getter for integration node rather than a
-       *  property to avoid cyclic reference propblems   */
+       *  property to avoid cyclic reference problems   */
       this.getIntegrationNode=function(){
           return integrationNode;
       };
-
       this.applications = [];
       this.getFlowInstances=function(flowName){
         var flowInstances =[];
@@ -345,6 +371,11 @@ Integration = (function(){
         return flowInstances;
       };
       
+      if(other===undefined){
+        //nothing else to do 
+        return;        
+      }      
+      this.name = other.name;
       other.applications.application.forEach(function(nextApplication){
           this.applications.push(new Application(nextApplication,integrationNode));
       },this);
@@ -364,7 +395,6 @@ Integration = (function(){
        *  
        */
       this.type = "Application";
-      this.name = other.name;
       /** provide getter for integration node rather than a
        *  property to avoid cyclic reference propblems   */
       this.getIntegrationNode=function(){
@@ -379,12 +409,15 @@ Integration = (function(){
           }
         });
         return messageFlow;
-      };
-      
+      };      
+      if(other===undefined){
+        //nothing else to do 
+        return;        
+      }
+      this.name = other.name;      
       other.messageFlows.messageFlow.forEach(function(nextMessageFlow){
           this.messageFlows.push(new MessageFlow(nextMessageFlow,integrationNode));
       },this);
-
   };
 
   /**
@@ -400,11 +433,17 @@ Integration = (function(){
        *  
        */
       this.type = "MessageFlow";
-      this.name = other.name;
-      this.flowStatsTopic=other.flowStatsTopic;
       this.flowStatsEventHandlers=$.Callbacks();
       this.snapshots=[];
 
+      if(other===undefined){
+        //nothing else to do 
+        return;        
+      }
+      
+      this.name = other.name;
+      this.flowStatsTopic=other.flowStatsTopic;
+      
       /** provide getter for integration node rather than a
        *  property to avoid cyclic reference propblems   */
       this.getIntegrationNode=function(){
@@ -450,28 +489,59 @@ Integration = (function(){
        */
 
   };
+  
+  MessageFlowSimulation = function(name){
+    this.name=name;    
+  };
+  MessageFlowSimulation.prototype = new MessageFlow();
+  
+  ApplicationSimulation = function(name){
+    this.name=name;
+    this.messageFlows=[];
+    this.addMessageFlow = function(name){
+      var newMessageFlow = new MessageFlowSimulation(name);
+      this.messageFlows.push(newMessageFlow);
+      return newMessageFlow;
+    };
+    
+  };
+  ApplicationSimulation.prototype = new Application;
+  
+  IntegrationServerSimulation = function(name){
+    this.name=name;
+    this.applications=[];
+    this.addApplication = function(name){
+      var newApplication = new ApplicationSimulation(name);
+      this.applications.push(newApplication);
+      return newApplication;      
+    };    
+  };
+  
+  IntegrationNodeSimulation=function(name){
+    this.name=name;
+    this.integrationServers=[];
+    this.on=function(){
+      //TODO create a PubSubSimulation object constructor?
+    },
+    this.addIntegrationServer=function(name){
+      var newServer = new IntegrationServerSimulation(name);
+      this.integrationServers.push(newServer);
+      return newServer;
+    };    
+  }
 
   IntegrationBusSimulation = function(){
+    this.integrationNodes=[];
     this.addIntegrationNode=function(name){
-      return {
-        addIntegrationServer:function(name){
-          return {
-            addApplication : function(name){
-              return {
-                addMessageFlow : function(name){
-                  return {
-                    
-                  }
-                }                
-              };
-            }
-          };
-        }        
-      };
+      var newNode = new IntegrationNodeSimulation(name);
+      this.integrationNodes.push(newNode);
+      return newNode;
     };   
   }
   
-  IntegrationBusSimulation.prototype=new IntegrationBus();
+  IntegrationBusSimulation.prototype    = new IntegrationBus();
+  IntegrationNodeSimulation.prototype   = new IntegrationNode();
+  IntegrationServerSimulation.prototype = new IntegrationServer();
   
   
   return{
