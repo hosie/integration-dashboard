@@ -30,7 +30,25 @@ Make sure that flow stats and resource manager stats are turned on.
 You will get errors if your Integration Node does not have a queue manager.
 There are a few bugs.  If you fix any, I'd love to hear about it.
 
+## Testing
+# prereqs
+* make sure mocha is installed
+```
+npm install -g mocha
+```
 
+# run the unit tests for the front end code
+* start the server in test mode
+```
+node app.js --test
+```
+* point your browser(s) at [http://localhost:3002/Test/index.html](http://localhost:3002/Test/index.html)
 
+# run backend API and unit tests
+* cd to project root
+* run ``mocha``
 
+# manual test of visuals
+* start the server without the --test flag
+* point browser at [http://localhost:3002/Test/index.html](http://localhost:3002/Test/index.html)
 
