@@ -25,15 +25,10 @@ Integration = (function(){
       this.mqttClient = new Paho.MQTT.Client(host, port, "i-d:"+integrationNodeName.substring(0,18));
 
       /** map of topic names to jquery Callbacks objects */
-      this.subscriberCallbacks={};   
+      this.subscriberCallbacks={};
+      this.pendingSubscriptions=[];      
+      this.connected=false;
       
-      /** callbacks who are interested in flow stats from any flow */
-      this.flowStatsCallbacks =null;
-
-      /** callbacks who are interested in resource stats from any
-       *  server */
-      this.resourceStatsCallbacks =null;
-
       /**
        * Register for callback on a specific topic.  Wildcards are not 
        * supported. 
@@ -60,22 +55,20 @@ Integration = (function(){
        */
       function on(topic,callback){
           //TODO is it more efficient just to create a new client connection for each wildcard subscription?
-          if(topic==="IBM/IntegrationBus/"+this.integrationNodeName+"/Statistics/JSON/SnapShot/+") {
-              if(this.flowStatsCallbacks===null){
-                  this.flowStatsCallbacks=$.Callbacks();
-              }
-              this.flowStatsCallbacks.add(callback);
-          }else if(topic==="IBM/IntegrationBus/+/Statistics/JSON/Resource/+"){
-              if(this.resourceStatsCallbacks===null){
-                  this.resourceStatsCallbacks=$.Callbacks();
-              }
-              this.resourceStatsCallbacks.add(callback);
-          }else{
-              if(this.subscriberCallbacks[topic]===undefined) {
-                  this.subscriberCallbacks[topic]=$.Callbacks();
-              }
-              this.subscriberCallbacks[topic].add(callback);
+          
+          if(this.subscriberCallbacks[topic]===undefined) {
+              this.subscriberCallbacks[topic]=$.Callbacks();
           }
+          this.subscriberCallbacks[topic].add(callback);
+          if(this.connected){
+            
+          }else{
+            this.pendingSubscriptions.push({
+              topic    : topic,
+              callback : callback
+            });
+          }
+          
       }
       this.on=on;
 
@@ -86,19 +79,7 @@ Integration = (function(){
           var payloadObj= JSON.parse(message.payloadString);            
           if(callbacks) {               
                callbacks.fire(payloadObj);
-          }
-          if(this.flowStatsCallbacks!=null){
-              var flowStatsHLQ = "IBM/IntegrationBus/" + this.integrationNodeName +"/Statistics/JSON/SnapShot";
-              if(topicString.substring(0,flowStatsHLQ.length)==flowStatsHLQ) {
-                  this.flowStatsCallbacks.fire(payloadObj);
-              }
-          }
-          if(this.resourceStatsCallbacks!=null){
-              var resourceStatsHLQ = "IBM/IntegrationBus/" + this.integrationNodeName +"/Statistics/JSON/Resource";
-              if(topicString.substring(0,resourceStatsHLQ.length)==resourceStatsHLQ) {
-                  this.resourceStatsCallbacks.fire(payloadObj);
-              }
-          }
+          }          
         }catch(err){
           console.log("ERROR in onMessage");
           console.dir(err);
@@ -115,7 +96,8 @@ Integration = (function(){
               keepAliveInterval : 60,
               useSSL : false,
               onSuccess : $.proxy(function(){
-                      this.subscribeToAllTopics(callback);
+                      this.connected=true;
+                      this.processPendingSubscriptions(callback);
               },this),
               onFailure: function(responseObject) {
                       onError("failed connecting to MQTT(" + integrationNodeName + ":" + host + ":" + port,
@@ -127,20 +109,23 @@ Integration = (function(){
       }
       this.connect=connect;
       
-      function subscribeToAllTopics(callback){
-          
-          var options = {
-              qos:0,
-              onFailure: function(responseObject) {
-                      onError(responseObject);
-              }
-          };
-          var flowStatsTopic = "IBM/IntegrationBus/" + this.integrationNodeName + "/Statistics/JSON/+/+/applications/+/messageflows/+";
-          this.mqttClient.subscribe(flowStatsTopic,options);
-          var resourceStatsTopic = "IBM/IntegrationBus/" + this.integrationNodeName + "/Statistics/JSON/Resource/+/";
-          this.mqttClient.subscribe(resourceStatsTopic,options);    
+      function processPendingSubscriptions(callback){          
+        var options = {
+          qos:0,
+          onFailure: function(responseObject) {
+            onError(responseObject);
+          }
+        };
+        var self=this;
+        this.pendingSubscriptions.forEach(function(item){
+          var topic = item.topic;
+          var callback = item.callback;
+          self.mqttClient.subscribe(topic,options);
+        
+        });
+                    
       };
-      this.subscribeToAllTopics=subscribeToAllTopics;
+      this.processPendingSubscriptions=processPendingSubscriptions;
   };
 
    /**
@@ -281,7 +266,11 @@ Integration = (function(){
         });
         return flowInstances;
       };
-      
+      this.onFlowStats=function(snapShot){
+        if(this.flowStatsEventHandlers){
+          this.flowStatsEventHandlers.fire(snapShot);                  
+        }        
+      };
       if(other===undefined){
         //nothing else to do 
         return;        
@@ -319,10 +308,7 @@ Integration = (function(){
       function on(eventType,callback){
            if(eventType=='messageFlowStats') {
                if(this.flowStatsEventHandlers==null) {
-                   this.flowStatsEventHandlers=$.Callbacks();
-                   this.pubSub.on("IBM/IntegrationBus/"+ this.name +"/Statistics/JSON/SnapShot/+",$.proxy(function(snapShot){
-                    this.flowStatsEventHandlers.fire(snapShot);
-                   },this));
+                   this.flowStatsEventHandlers=$.Callbacks();                   
                }
                this.flowStatsEventHandlers.add(callback);
            }else if(eventType=='resourceStats') {
@@ -359,6 +345,9 @@ Integration = (function(){
       this.getIntegrationNode=function(){
           return integrationNode;
       };
+      this.onFlowStats=function(stats){
+        integrationNode.onFlowStats(stats);
+      };
       this.applications = [];
       this.getFlowInstances=function(flowName){
         var flowInstances =[];
@@ -377,7 +366,7 @@ Integration = (function(){
       }      
       this.name = other.name;
       other.applications.application.forEach(function(nextApplication){
-          this.applications.push(new Application(nextApplication,integrationNode));
+          this.applications.push(new Application(nextApplication,this));
       },this);
 
   };
@@ -386,7 +375,7 @@ Integration = (function(){
    * Internal constructor. Do not use. To get an Application
    * object, use IntegrationServer.applications[] 
                                    */
-  Application = function(other,integrationNode){
+  Application = function(other,integrationServer){
        /** 
        *  
        * type is always set to Application. 
@@ -398,8 +387,11 @@ Integration = (function(){
       /** provide getter for integration node rather than a
        *  property to avoid cyclic reference propblems   */
       this.getIntegrationNode=function(){
-          return integrationNode;
+          return integrationServer.getIntegrationNode();
       };
+      this.onFlowStats=function(snapShot){
+        integrationServer.onFlowStats(snapShot);
+      }
       this.messageFlows = [];
       this.getMessageFlow=function(flowName){
         var messageFlow=null;
@@ -416,7 +408,7 @@ Integration = (function(){
       }
       this.name = other.name;      
       other.messageFlows.messageFlow.forEach(function(nextMessageFlow){
-          this.messageFlows.push(new MessageFlow(nextMessageFlow,integrationNode));
+          this.messageFlows.push(new MessageFlow(nextMessageFlow,this));
       },this);
   };
 
@@ -424,7 +416,7 @@ Integration = (function(){
    * Internal constructor. Do not use. To get a MessageFlow 
    * object, use Application.messageFlows[] 
                                    */
-  MessageFlow = function(other,integrationNode){
+  MessageFlow = function(other,application){
        /** 
        *  
        * type is always set to MessageFlow. 
@@ -447,14 +439,18 @@ Integration = (function(){
       /** provide getter for integration node rather than a
        *  property to avoid cyclic reference propblems   */
       this.getIntegrationNode=function(){
-          return integrationNode;
+          return application.getIntegrationNode();
+      };
+      this.getApplication= function(){
+        return application;
       };
 
       //subscribe to accounting and stats for this flow
-      integrationNode.pubSub.on(this.flowStatsTopic,$.proxy(onStats,this));
+      this.getIntegrationNode().pubSub.on(this.flowStatsTopic,$.proxy(onStats,this));
       
       function onStats(stats){
         this.snapshots.push(stats);
+        this.getApplication().onFlowStats(stats);
         if(this.snapshots.length>MAX_SNAPSHOT_RECORDS){
           this.snapshots.shift();          
         }
