@@ -10,7 +10,7 @@ afterEach(function(done){
 });
 
 
-describe('IntegrationBusSimulation', function(){
+describe.skip('IntegrationBusSimulation', function(){
     this.timeout(10000);
     it('should not barf',function(done){
       Integration.simulateIntegrationBus(function(error,integrationBus){
@@ -25,7 +25,7 @@ describe('IntegrationBusSimulation', function(){
     });
 });
 
-describe('IntegrationNodeSimulation', function(){
+describe.skip('IntegrationNodeSimulation', function(){
   this.timeout(10000);
   var integrationNode;
   beforeEach(function(done){
@@ -65,7 +65,7 @@ describe('IntegrationNodeSimulation', function(){
 });
 
 
-describe('IntegrationServerSimulation', function(){
+describe.skip('IntegrationServerSimulation', function(){
   this.timeout(10000);
 
   var integrationServer;
@@ -136,7 +136,7 @@ describe('IntegrationServerSimulation', function(){
   });
 });
 
-describe('ApplicationSimulation', function(){
+describe.skip('ApplicationSimulation', function(){
   this.timeout(10000);
 
   var application;
@@ -164,7 +164,7 @@ describe('ApplicationSimulation', function(){
   });
 });
 
-describe('MessageFlowSimulation', function(){
+describe.skip('MessageFlowSimulation', function(){
   
 
   this.timeout(10000);
