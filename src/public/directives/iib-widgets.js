@@ -200,9 +200,7 @@ includePaho();
         aspectRatio : 1,
         init:function (canvas,data){
           timeFormatter = d3.time.format("%X");
-          canvas.svg
-          .attr('class','iib-chart');
-
+          
           this.maxY    = d3.max(data.map(function(item){
             return d3.max(item.map(function(item){
               return item.TotalInputMessages;
@@ -373,8 +371,7 @@ includePaho();
         iibSimulation:options.iibSimulation || false,
         aspectRatio : 1,
         init:function (canvas){
-          canvas.svg
-          .attr('class','iib-chart');
+          
           //create a new d3 pack and 
           //set the accessor for data see - https://github.com/mbostock/d3/wiki/Pack-Layout#wiki-value
           //here we assume that the data will have a "size" field
@@ -491,7 +488,7 @@ includePaho();
   	  .append('svg') 
   	  .style('width', fullWidth) 
   	  .style('height', fullHeight) 
-  	  .attr('class', 'mathsteroids');
+  	  .attr('class', 'iib-chart');
 
   	  var g = svg
   	  .append("g") 
