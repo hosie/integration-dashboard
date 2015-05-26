@@ -420,5 +420,7 @@ describe('MessageFlow', function(){
   it('can get integration node',function(){
       messageFlow.getIntegrationNode().should.equal(integrationNode);
   });
+
+  it.skip('does not have snapshots for other flows',function(){});
 });
 
