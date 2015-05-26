@@ -9,8 +9,7 @@ afterEach(function(done){
     done();
 });
 
-
-describe.skip('IntegrationBusSimulation', function(){
+describe('IntegrationBusSimulation', function(){
     this.timeout(10000);
     it('should not barf',function(done){
       Integration.simulateIntegrationBus(function(error,integrationBus){
@@ -25,7 +24,7 @@ describe.skip('IntegrationBusSimulation', function(){
     });
 });
 
-describe.skip('IntegrationNodeSimulation', function(){
+describe('IntegrationNodeSimulation', function(){
   this.timeout(10000);
   var integrationNode;
   beforeEach(function(done){
@@ -164,7 +163,7 @@ describe.skip('ApplicationSimulation', function(){
   });
 });
 
-describe.skip('MessageFlowSimulation', function(){
+describe('MessageFlowSimulation', function(){
   
 
   this.timeout(10000);
@@ -201,12 +200,10 @@ describe.skip('MessageFlowSimulation', function(){
       
   });
 
-  it('can get integration node',function(){
+  it.skip('can get integration node',function(){
       messageFlow.getIntegrationNode().should.equal(integrationNode);
   });
 });
-
-
 
 describe('IntegrationBus', function(){
     this.timeout(30000);
@@ -221,9 +218,9 @@ describe('IntegrationBus', function(){
             }
       });      
     });    
+
+    it.skip('getFlowInstances',function(done){});  
 });
-
-
 
 describe('IntegrationNode', function(){
   this.timeout(30000);
@@ -247,7 +244,7 @@ describe('IntegrationNode', function(){
 
 
   /* integration node fires an event every time one of its servers get a resource stats event , or their flows get a flow stats event*/
-  it('publishes every message flow stats snapshot',function(done){      
+  it.skip('publishes every message flow stats snapshot',function(done){      
       integrationNode.on('messageFlowStats',function(stats){
           if(stats.WMQIStatisticsAccounting != undefined) {
               done();
@@ -255,6 +252,22 @@ describe('IntegrationNode', function(){
       });      
   });
 
+  it('publishes more than one message flow stats snapshot',function(done){
+      var  flowName;
+      
+      integrationNode.on('messageFlowStats',function(stats){
+          if(stats.WMQIStatisticsAccounting != undefined) {
+            if(flowName==undefined){
+              flowName=stats.WMQIStatisticsAccounting.MessageFlowName;
+              
+            }else if (flowName===stats.WMQIStatisticsAccounting.MessageFlowName){
+              //2nd publish for this flow name
+              done();              
+            }              
+          }
+      });      
+  });
+  
   it.skip('publishes every resource stats snapshot',function(done){      
       integrationNode.on('resourceStats',function(stats){
           if(stats.ResourceStatistics != undefined) {
@@ -262,6 +275,9 @@ describe('IntegrationNode', function(){
           }
       });      
   });
+
+    
+
 });
 
 describe('IntegrationServer', function(){

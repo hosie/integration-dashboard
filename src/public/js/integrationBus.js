@@ -154,27 +154,27 @@ Integration = (function(){
   
 
   function simulateIntegrationBus(callback){
-      var instance      = new IntegrationBusSimulation();    
+      var instance        = new IntegrationBusSimulation();    
       
-      var node1         = instance.addIntegrationNode("Node1");
+      var node1           = instance.addIntegrationNode("Node1");
       
-      var server11      = node1.addIntegrationServer("Server11");
-      var server12      = node1.addIntegrationServer("Server12");
+      var server11        = node1.addIntegrationServer("Server11");
+      var server12        = node1.addIntegrationServer("Server12");
       
       var application111  = server11.addApplication("Application111");
       var application112  = server11.addApplication("Application112");
       var application121  = server12.addApplication("Application121");
       var application122  = server12.addApplication("Application122");
       
-      var flow1111         = application111.addMessageFlow("Flow1111");
-      var flow1112        =  application111.addMessageFlow("Flow1112");
-      var flow1121         = application112.addMessageFlow("Flow1111");
-      var flow1122        =  application112.addMessageFlow("Flow1112");
+      var flow1111        = application111.addMessageFlow("Flow1111");
+      var flow1112        = application111.addMessageFlow("Flow1112");
+      var flow1121        = application112.addMessageFlow("Flow1121");
+      var flow1122        = application112.addMessageFlow("Flow1122");
       
-      var flow1211         = application121.addMessageFlow("Flow1211");
-      var flow1212         = application121.addMessageFlow("Flow1212");
-      var flow1221         = application122.addMessageFlow("Flow1221");
-      var flow1222         = application122.addMessageFlow("Flow1222");
+      var flow1211        = application121.addMessageFlow("Flow1211");
+      var flow1212        = application121.addMessageFlow("Flow1212");
+      var flow1221        = application122.addMessageFlow("Flow1221");
+      var flow1222        = application122.addMessageFlow("Flow1222");
       
       
       /*
@@ -271,27 +271,8 @@ Integration = (function(){
           this.flowStatsEventHandlers.fire(snapShot);                  
         }        
       };
-      if(other===undefined){
-        //nothing else to do 
-        return;        
-      }
-      this.name = other.name;
-      this.host = other.host;
-      this.mqtt = other.mqtt;
-      this.pubSub = new PubSub( this.name,this.host,this.mqtt);
-      this.pubSub.connect(
-          function(error){
-              if(error) {
-                  onError("error connecting to pubSub for " + this.name,error);
-              }        
-      });
       
-
-      other.integrationServers.integrationServer.forEach(function(nextIntegrationServer){
-          this.integrationServers.push(new IntegrationServer(nextIntegrationServer,this));
-      },this);
-
-       /**
+      /**
        *  Registers a listener for events
        * @method on 
        * @param {String} eventType the name of the event being 
@@ -322,6 +303,28 @@ Integration = (function(){
            }
       }
       this.on=on;
+      
+      if(other===undefined){
+        //nothing else to do 
+        return;        
+      }
+      this.name = other.name;
+      this.host = other.host;
+      this.mqtt = other.mqtt;
+      this.pubSub = new PubSub( this.name,this.host,this.mqtt);
+      this.pubSub.connect(
+          function(error){
+              if(error) {
+                  onError("error connecting to pubSub for " + this.name,error);
+              }        
+      });
+      
+
+      other.integrationServers.integrationServer.forEach(function(nextIntegrationServer){
+          this.integrationServers.push(new IntegrationServer(nextIntegrationServer,this));
+      },this);
+
+       
 
       
   };
@@ -342,11 +345,8 @@ Integration = (function(){
       this.type = "IntegrationServer";
       /** provide getter for integration node rather than a
        *  property to avoid cyclic reference problems   */
-      this.getIntegrationNode=function(){
-          return integrationNode;
-      };
       this.onFlowStats=function(stats){
-        integrationNode.onFlowStats(stats);
+        this.getIntegrationNode().onFlowStats(stats);
       };
       this.applications = [];
       this.getFlowInstances=function(flowName){
@@ -359,14 +359,20 @@ Integration = (function(){
         });
         return flowInstances;
       };
-      
+      this.setIntegrationNode=function(integrationNode){
+        this.getIntegrationNode=function(){
+          return integrationNode;
+        };
+      };
       if(other===undefined){
         //nothing else to do 
         return;        
       }      
       this.name = other.name;
+      this.setIntegrationNode(integrationNode);
+      var self=this;
       other.applications.application.forEach(function(nextApplication){
-          this.applications.push(new Application(nextApplication,this));
+          this.applications.push(new Application(nextApplication,self));
       },this);
 
   };
@@ -390,9 +396,18 @@ Integration = (function(){
           return integrationServer.getIntegrationNode();
       };
       this.onFlowStats=function(snapShot){
-        integrationServer.onFlowStats(snapShot);
+        this.getIntegrationServer().onFlowStats(snapShot);
       }
       this.messageFlows = [];
+      this.setIntegrationServer=function(integrationServer){
+        this.getIntegrationNode=function(){
+          return integrationServer.getIntegrationNode();
+        };
+        this.getIntegrationServer= function(){
+          return integrationServer
+        };
+        
+      };
       this.getMessageFlow=function(flowName){
         var messageFlow=null;
         this.messageFlows.forEach(function(nextMessageFlow){
@@ -406,6 +421,8 @@ Integration = (function(){
         //nothing else to do 
         return;        
       }
+      
+      this.setIntegrationServer(integrationServer);
       this.name = other.name;      
       other.messageFlows.messageFlow.forEach(function(nextMessageFlow){
           this.messageFlows.push(new MessageFlow(nextMessageFlow,this));
@@ -427,28 +444,7 @@ Integration = (function(){
       this.type = "MessageFlow";
       this.flowStatsEventHandlers=$.Callbacks();
       this.snapshots=[];
-
-      if(other===undefined){
-        //nothing else to do 
-        return;        
-      }
-      
-      this.name = other.name;
-      this.flowStatsTopic=other.flowStatsTopic;
-      
-      /** provide getter for integration node rather than a
-       *  property to avoid cyclic reference propblems   */
-      this.getIntegrationNode=function(){
-          return application.getIntegrationNode();
-      };
-      this.getApplication= function(){
-        return application;
-      };
-
-      //subscribe to accounting and stats for this flow
-      this.getIntegrationNode().pubSub.on(this.flowStatsTopic,$.proxy(onStats,this));
-      
-      function onStats(stats){
+      this.onStats = function(stats){
         this.snapshots.push(stats);
         this.getApplication().onFlowStats(stats);
         if(this.snapshots.length>MAX_SNAPSHOT_RECORDS){
@@ -456,7 +452,7 @@ Integration = (function(){
         }
         this.flowStatsEventHandlers.fire(stats);
       };
-
+      
       /**
        *  Registers a listener for events
        * @method on 
@@ -476,6 +472,30 @@ Integration = (function(){
                this.flowStatsEventHandlers.add(callback);
            }
       }
+      
+      this.setApplication = function(application){
+        /** provide getter for integration node rather than a
+        *  property to avoid cyclic reference propblems   */
+        this.getIntegrationNode=function(){
+          return application.getIntegrationNode();
+        };
+        this.getApplication= function(){
+          return application;
+        };        
+      };
+      
+      if(other===undefined){
+        //nothing else to do 
+        return;        
+      }
+      
+      this.name = other.name;
+      this.flowStatsTopic=other.flowStatsTopic;
+      this.setApplication(application);
+      
+      //subscribe to accounting and stats for this flow
+      this.getIntegrationNode().pubSub.on(this.flowStatsTopic,$.proxy(this.onStats,this));
+      
 
       /** 
        * This event fires whenever a new snapshot of resource 
@@ -486,41 +506,75 @@ Integration = (function(){
 
   };
   
-  MessageFlowSimulation = function(name){
-    this.name=name;    
+  MessageFlowSimulation = function(name,application){
+    this.name=name;
+    //re-initialise any array or object properties
+    this.snapshots=[];
+    var self=this;
+    this.setApplication(application);
+    setInterval(function(){
+      var now=new Date();
+      var hr = now.getHours();
+      if (hr < 10) {
+        hr = "0" + hr;
+      }
+      var min = now.getMinutes();
+      if (min < 10) {
+        min = "0" + min;
+      }
+      var sec = now.getSeconds();
+      if (sec < 10) {
+        sec = "0" + sec;
+      }
+
+      var currentTime = hr +":"+ min +":"+ sec +".000000";
+      self.onStats( {
+                      WMQIStatisticsAccounting : {
+                          RecordType:"SnapShot",
+                          RecordCode:"Snapshot",
+                          MessageFlowName:self.name,
+                          MessageFlow:{
+                              EndTime:currentTime,
+                              TotalCPUTime:Math.floor(1000*Math.random()),
+                              TotalInputMessages:Math.floor(400*Math.random())
+                          }
+                      }
+                    });
+      
+    },5000);    
   };
   MessageFlowSimulation.prototype = new MessageFlow();
   
-  ApplicationSimulation = function(name){
+  ApplicationSimulation = function(name,integrationServer){
     this.name=name;
     this.messageFlows=[];
     this.addMessageFlow = function(name){
-      var newMessageFlow = new MessageFlowSimulation(name);
+      var newMessageFlow = new MessageFlowSimulation(name,this);
       this.messageFlows.push(newMessageFlow);
       return newMessageFlow;
     };
+    this.setIntegrationServer(integrationServer);
     
   };
   ApplicationSimulation.prototype = new Application;
   
-  IntegrationServerSimulation = function(name){
+  IntegrationServerSimulation = function(name,integrationNode){
     this.name=name;
     this.applications=[];
     this.addApplication = function(name){
-      var newApplication = new ApplicationSimulation(name);
+      var newApplication = new ApplicationSimulation(name,this);
       this.applications.push(newApplication);
       return newApplication;      
     };    
+    this.setIntegrationNode(integrationNode);
   };
   
   IntegrationNodeSimulation=function(name){
     this.name=name;
     this.integrationServers=[];
-    this.on=function(){
-      //TODO create a PubSubSimulation object constructor?
-    },
+    
     this.addIntegrationServer=function(name){
-      var newServer = new IntegrationServerSimulation(name);
+      var newServer = new IntegrationServerSimulation(name,this);
       this.integrationServers.push(newServer);
       return newServer;
     };    
@@ -529,7 +583,7 @@ Integration = (function(){
   IntegrationBusSimulation = function(){
     this.integrationNodes=[];
     this.addIntegrationNode=function(name){
-      var newNode = new IntegrationNodeSimulation(name);
+      var newNode = new IntegrationNodeSimulation(name,this);
       this.integrationNodes.push(newNode);
       return newNode;
     };   

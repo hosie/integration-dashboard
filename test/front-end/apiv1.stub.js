@@ -85,6 +85,7 @@ Paho.MQTT = (function(){
                         WMQIStatisticsAccounting : {
                             RecordType:"SnapShot",
                             RecordCode:"Snapshot",
+                            MessageFlowName:"RecordDistributor",
                             MessageFlow:{
                                 TotalCPUTime:12345
                             }
