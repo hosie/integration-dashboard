@@ -206,7 +206,11 @@ Author John Hosie
         }
       }     
     };
-    sunBurstWidget.id="iib-sun-burst";
+    sunBurstWidget.id          = "iib-sun-burst";    
+    sunBurstWidget.name        = "Sun burst";
+    sunBurstWidget.description = "Integration bus, nodes, servers, applications etc laid out as a zoomable sun burst ";
+    sunBurstWidget.preview     = "images/sunBurst.png";
+    sunBurstWidget.attributes  = [ ];
     widgetRegistry.register(sunBurstWidget);
     
   })();
