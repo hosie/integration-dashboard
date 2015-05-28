@@ -58,8 +58,8 @@ Author John Hosie
           Properties
             id        : (string) non-normalized (snake case) name of the widget type, e.g. to be used in angular directives
             map         : function(IntegrationBus,options)
-              Convert the IntegrationBus object to the format of data required. This can be a function provided, specifically for use with this widget or can be one of the general map functions provided by d3Util facotry
-            TODO - probably need some way to indicate when to call renderDymanic - no point redrawing a chart for every publication if it is not renedering any data that was altered in that publication.  
+              Convert the IntegrationBus object to the format of data required. This can be a function provided, specifically for use with this widget or can be one of the general map functions provided by d3Util factory
+            TODO - probably need some way to indicate when to call draw - no point redrawing a chart for every publication if it is not rendering any data that was altered in that publication.  
                    This is purely a performance optimisation and would really only benefit charts that are static so maybe we just need to no-op the draw function if the chart is static
     */
     register:function(widgetFactory){
