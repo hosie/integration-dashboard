@@ -27,6 +27,13 @@ Author John Hosie
   //       Could make the widgets services or factories and use dependency inject, this would even work for widgets in separate modules  
   //       How would this affect the portability of the widgets to a non angular framework
   var widgetRegistry = {
+    attributeType : {
+      text : {
+        isText:function(){        
+          return true;
+        }
+      }
+    },
     factories:[],
     /*
     Parms
@@ -49,17 +56,18 @@ Author John Hosie
                 Called whenever the bound data changes.
             }
           Properties
-            type        : (string) non-normalized name of the widget type, e.g. to be used in angular directives
+            id        : (string) non-normalized (snake case) name of the widget type, e.g. to be used in angular directives
             map         : function(IntegrationBus,options)
               Convert the IntegrationBus object to the format of data required. This can be a function provided, specifically for use with this widget or can be one of the general map functions provided by d3Util facotry
             TODO - probably need some way to indicate when to call renderDymanic - no point redrawing a chart for every publication if it is not renedering any data that was altered in that publication.  
                    This is purely a performance optimisation and would really only benefit charts that are static so maybe we just need to no-op the draw function if the chart is static
     */
     register:function(widgetFactory){
-      this.factories[widgetFactory.type]=widgetFactory;
+      this.factories[widgetFactory.id]=widgetFactory;
+      this.factories.push(widgetFactory);
     },
-    createWidget:function(type,options){
-      var factory = this.factories[type];
+    createWidget:function(id,options){
+      var factory = this.factories[id];
       if(factory){
         var widget=new factory(options);
         widget.map=factory.map || function(integrationBus){return integrationBus;};
@@ -67,6 +75,27 @@ Author John Hosie
       }else{
         return null;
       }      
+    },
+    describeWidgets:function(){
+      //TODO make this asyncronous?
+      var widgetDescriptions=[];
+      this.factories.forEach(function(factory){
+        //TODO add nls support. Only id should be mandatory and we can optionally lookup and nls JSON file for the other fields
+        widgetDescriptions.push(
+          {
+            id          : factory.id,
+            name        : factory.name,
+            description : factory.description,
+            preview     : factory.preview,//this is a URL ( relative or absolute) to an image file. 
+                                          //TODO: draw the widget using simulated data
+            attributes  : factory.attributes
+            
+          }
+        );
+        
+      });
+      return widgetDescriptions;
+      
     }
   };
 
@@ -177,7 +206,7 @@ Author John Hosie
         }
       }     
     };
-    sunBurstWidget.type="iib-sun-burst";
+    sunBurstWidget.id="iib-sun-burst";
     widgetRegistry.register(sunBurstWidget);
     
   })();
@@ -295,7 +324,16 @@ Author John Hosie
         }        
       }
     };
-    flowStatsWidget.type="iib-flow-stats";
+    flowStatsWidget.id          = "iib-flow-stats";
+    flowStatsWidget.name        = "Throughput";
+    flowStatsWidget.description = "Messages per second line graph";
+    flowStatsWidget.preview     = "images/throughput.png";
+    flowStatsWidget.attributes  = [ 
+            {
+              type : widgetRegistry.attributeType.text,
+              name : "flowName",
+              id   : "iib-flow-name"
+            }];
     flowStatsWidget.map=function(integrationBus){
         //return an array of arrays.
         // the inner array is the array of snapshots, the outer array contains one of those for each instance of the flow
@@ -450,7 +488,7 @@ Author John Hosie
         }        
       }
     };
-    circlePackWidget.type="iib-circle-pack";
+    circlePackWidget.id="iib-circle-pack";
     widgetRegistry.register(circlePackWidget);
   })();  
 
@@ -622,6 +660,23 @@ Author John Hosie
   }
 
   function iibWidgetSpecFactory(){
+    return {
+      widgets:widgetRegistry.describeWidgets(),
+      getWidget:function(id,callback){
+        console.log("getWidget " + id);
+        var widget;
+        this.widgets.forEach(function(item){
+          if(item.id==id) {
+            callback(item);
+          }
+          widget=item;
+        });
+        if(widget==undefined) {
+          callback(null);
+        }
+      }
+    };
+      
     var textType={
       isText:function(){
         console.log("isText");
