@@ -455,44 +455,61 @@ Author John Hosie
   })();  
 
   function d3UtilFactory(iibIntegrationBus){
-    function createCanvas(element, options) {
-  	  var fullWidth = d3.select(element).node().offsetWidth;
-      
-      //responsive. max margins at these numbers but respond to smaller element sizes with a margin as a fraction of element size
-  	  var margin = {
-  		  right : Math.min(80,0.1*fullWidth),
-        left : Math.min(80,0.1*fullWidth)
+    var Canvas = function(element, options){
+      this.element=element;
+      this.options=options;
+      this.remove=function(){};//remove() function is re-initialised later, in init()
+      this.reload=function(){
+        this.remove();
+        this.init()
+        
       };
-      var width = fullWidth - margin.left - margin.right;
-  	  var height;
-      var fullHeight;
+      this.init=function(){
+        var fullWidth = d3.select(this.element).node().offsetWidth;
       
-      if(options.aspectRatio) {
-  		  height = width * options.aspectRatio;
-        margin.bottom = Math.min(20,0.1*height);
-  		  margin.top    = Math.min(10,0.05*height);
-        fullHeight    = height + margin.top + margin.bottom;
-  	  }else{      
-        fullHeight = Math.max(200,d3.select(element).node().offsetHeight);
-        margin.bottom = Math.min(20,0.1*fullHeight);
-  		  margin.top    = Math.min(10,0.05*fullHeight);
-        height = fullHeight - margin.top - margin.bottom;
+        //responsive. max margins at these numbers but respond to smaller element sizes with a margin as a fraction of element size
+        var margin = {
+          right : Math.min(80,0.1*fullWidth),
+          left : Math.min(80,0.1*fullWidth)
+        };
+        this.width = fullWidth - margin.left - margin.right;
+        var fullHeight;
+        
+        if(this.options.aspectRatio) {
+          this.height = this.width * this.options.aspectRatio;
+          margin.bottom = Math.min(20,0.1*this.height);
+          margin.top    = Math.min(10,0.05*this.height);
+          fullHeight    = this.height + margin.top + margin.bottom;
+        }else{      
+          fullHeight = Math.max(200,d3.select(this.element).node().offsetHeight);
+          margin.bottom = Math.min(20,0.1*fullHeight);
+          margin.top    = Math.min(10,0.05*fullHeight);
+          this.height = fullHeight - margin.top - margin.bottom;
+        }
+
+        rootSvg = d3.select(this.element) 
+        .append('svg') 
+        .style('width', fullWidth) 
+        .style('height', fullHeight) 
+        .attr('class', 'iib-chart');
+
+        this.svg = rootSvg
+        .append("g") 
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        
+        //initialise the remove() function here so that we do not need to store rootSvg as a property on the object
+        //and risk any consumers of that object from accidentally accessing it
+        this.remove=function(){
+          rootSvg.remove();          
+        }        
       }
-
-  	  var svg = d3.select(element) 
-  	  .append('svg') 
-  	  .style('width', fullWidth) 
-  	  .style('height', fullHeight) 
-  	  .attr('class', 'iib-chart');
-
-  	  var g = svg
-  	  .append("g") 
-  	  .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-  	  return{
-  		  width : width,
-  		  height : height,
-  		  svg : g
-  	  }
+      
+    };
+    function createCanvas(element, options) {
+        var canvas = new Canvas(element,options);
+        canvas.init();
+        return canvas;
+  	  
     }
 
     function renderWidget(widget,iElement){
@@ -501,8 +518,6 @@ Author John Hosie
       };
       var canvas = createCanvas(iElement[0],canvasOptions);
       iibIntegrationBus.ready(function(err,integrationBus){
-        
-      
       
         var data = widget.map(integrationBus);
             
@@ -512,29 +527,18 @@ Author John Hosie
           integrationNode.on('messageFlowStats',function(){
             var data = widget.map(integrationBus);          
             widget.draw(canvas,data);          
-          });
-          
-        });
-        
-        if (widget.iibSimulation){
-
-          
-          
-          
-        }else{
-          //TODO get topic from widget - even better, get metric names ( eg. flow.cpu...) from widget and use separate facotry to convert to topic
-          
-          /*var topic = "IBM/IntegrationBus/TESTNODE_John/Statistics/JSON/+/+/applications/+/messageflows/" + scope.iibFlowName;
-          iibSubscriber.subscribe(topic,scope,function(message){
-            //TODO map message to data format required by widget.
-            //who provides the mapping function?  For now, the widget but lets separate that out so that the widget just says the metric that they want (e.g. flow.cpu)
-            //widget.onMessageArrived(message);
-          });
-          console.log("simulation off");
-          console.dir(scope);
-          */
-        }
+          });          
+        });        
       });
+      return {
+        remove:function(){
+          canvas.remove();
+          //TODO unsubscribe to flow stats
+        },
+        reload:function(){
+          canvas.reload();                 
+        }
+      }
     }
     return {
       renderWidget:renderWidget      
@@ -574,10 +578,26 @@ Author John Hosie
     };
 
     function link(scope,iElement,iAttrs){
-      var widget=widgetRegistry.createWidget("iib-flow-stats",scope);
+
       
-      d3Util.renderWidget(widget,iElement);      
-    }    
+      var widget    = widgetRegistry.createWidget("iib-flow-stats",scope);
+      var rendering = d3Util.renderWidget(widget,iElement);
+      
+      scope.$watch(
+        function(){
+          return scope.iibFlowName;        
+        },
+        function(newValue,oldValue){
+          if(newValue===oldValue){
+            //do nothing
+          }else{          
+            rendering.remove();
+            widget    = widgetRegistry.createWidget("iib-flow-stats",scope);
+            rendering = d3Util.renderWidget(widget,iElement);
+          }
+        }
+      );
+    }
   }
 
   function iibSunBurstDirective($rootScope,d3Util){
