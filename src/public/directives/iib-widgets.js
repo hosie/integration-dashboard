@@ -70,7 +70,9 @@ Author John Hosie
       var factory = this.factories[id];
       if(factory){
         var widget=new factory.widget(options);
-        widget.map=factory.map || function(integrationBus){return integrationBus;};
+        if(widget.map==undefined){
+          widget.map=function(integrationBus){return integrationBus;};
+        }
         return widget;
       }else{
         return null;
