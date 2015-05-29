@@ -40,7 +40,7 @@ The project also includes a demo dashboard application that makes use of these d
 4. install the server side prereqs ``` npm install ```
 5. install the front end prereqs ``` bower install ```
 
-### Preview the visual appearance of the individual widgets with the simulated Integration Bus data
+### Preview the visual appearance of the widgets
 1. While in the `` integration-dashboard/src `` directory, start the node.js application ``` node app.js ```
 2. Open a browser and go to [http://localhost:3002/Test/index.html] (http://localhost:3002/Test/index.html)
 3. Click on the links in the navbar to view the different widgets
