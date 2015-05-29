@@ -63,13 +63,13 @@ Author John Hosie
                    This is purely a performance optimisation and would really only benefit charts that are static so maybe we just need to no-op the draw function if the chart is static
     */
     register:function(widgetFactory){
-      this.factories[widgetFactory.id]=widgetFactory;
+      this.factories[widgetFactory.descriptor.id]=widgetFactory;
       this.factories.push(widgetFactory);
     },
     createWidget:function(id,options){
       var factory = this.factories[id];
       if(factory){
-        var widget=new factory(options);
+        var widget=new factory.widget(options);
         widget.map=factory.map || function(integrationBus){return integrationBus;};
         return widget;
       }else{
@@ -83,12 +83,12 @@ Author John Hosie
         //TODO add nls support. Only id should be mandatory and we can optionally lookup and nls JSON file for the other fields
         widgetDescriptions.push(
           {
-            id          : factory.id,
-            name        : factory.name,
-            description : factory.description,
-            preview     : factory.preview,//this is a URL ( relative or absolute) to an image file. 
+            id          : factory.descriptor.id,
+            name        : factory.descriptor.name,
+            description : factory.descriptor.description,
+            preview     : factory.descriptor.preview,//this is a URL ( relative or absolute) to an image file. 
                                           //TODO: draw the widget using simulated data
-            attributes  : factory.attributes
+            attributes  : factory.descriptor.attributes
             
           }
         );
@@ -132,7 +132,7 @@ Author John Hosie
       }
       
     };
-    var sunBurstWidget = function(options){
+    function SunBurst(options){
       return {
         aspectRatio : 1,
         init:function (canvas,data){
@@ -206,11 +206,17 @@ Author John Hosie
         }
       }     
     };
-    sunBurstWidget.id          = "iib-sun-burst";    
-    sunBurstWidget.name        = "Sun burst";
-    sunBurstWidget.description = "Integration bus, nodes, servers, applications etc laid out as a zoomable sun burst ";
-    sunBurstWidget.preview     = "images/sunBurst.png";
-    sunBurstWidget.attributes  = [ ];
+    var sunBurstWidget = {
+      widget     : SunBurst,//widget constructor
+      descriptor : {
+        id          : "iib-sun-burst",
+        name        : "Sun burst",
+        description : "Integration bus, nodes, servers, applications etc laid out as a zoomable sun burst ",
+        preview     : "images/sunBurst.png",
+        attributes  : [ ]
+      }
+    };
+    
     widgetRegistry.register(sunBurstWidget);
     
   })();
@@ -221,11 +227,27 @@ Author John Hosie
           
     var timeFormatter;
     
-    var flowStatsWidget = function(options){
+    function FlowStats(options){
       return {
         iibSimulation : options.iibSimulation || false,
         iibFlowName   : options.iibFlowName   || null,
         aspectRatio : 1,
+        map:function(integrationBus){
+          //return an array of arrays.
+          // the inner array is the array of snapshots, the outer array contains one of those for each instance of the flow
+          var flowName = this.iibFlowName;
+          if(flowName==undefined) {
+            return [[]];
+          }
+          else{
+            var flowInstances = integrationBus.getFlowInstances(flowName);
+            return flowInstances.map(function(flowInstance){ 
+              return flowInstance.snapshots.map(function(snapshot){
+                return snapshot.WMQIStatisticsAccounting.MessageFlow;
+              });
+            });
+          }        
+        },
         init:function (canvas,data){
           timeFormatter = d3.time.format("%X");
           
@@ -328,34 +350,27 @@ Author John Hosie
         }        
       }
     };
-    flowStatsWidget.id          = "iib-flow-stats";
-    flowStatsWidget.name        = "Throughput";
-    flowStatsWidget.description = "Messages per second line graph";
-    flowStatsWidget.preview     = "images/throughput.png";
-    flowStatsWidget.attributes  = [ 
+    var flowStatsWidgetFactory = {
+      widget     : FlowStats,
+      descriptor : {
+        id          : "iib-flow-stats",
+        name        : "Throughput",
+        description : "Messages per second line graph",
+        preview     : "images/throughput.png",
+        attributes  : [ 
             {
               type : widgetRegistry.attributeType.text,
               name : "iibFlowName",
               label: "Flow Name",
               id   : "iib-flow-name"
-            }];
-    flowStatsWidget.map=function(integrationBus){
-        //return an array of arrays.
-        // the inner array is the array of snapshots, the outer array contains one of those for each instance of the flow
-        var flowName = this.iibFlowName;
-        if(flowName==undefined) {
-          return [[]];
-        }
-        else{
-          var flowInstances = integrationBus.getFlowInstances(flowName);
-          return flowInstances.map(function(flowInstance){ 
-            return flowInstance.snapshots.map(function(snapshot){
-              return snapshot.WMQIStatisticsAccounting.MessageFlow;
-            });
-          });
-        }        
-      };
-    widgetRegistry.register(flowStatsWidget);
+            }
+        ],
+      }
+      
+    };
+    
+    
+    widgetRegistry.register(flowStatsWidgetFactory);
   })();
   
   /* Define the circle pack widget and register it.
