@@ -3,7 +3,7 @@
 
 Visualisation of activity across multiple integration nodes. For use with IBM Integration Bus.
 
-This is still early days in the development of this project. Most of the effort until this point has been to put a framework in place that allows the data visualisation widgets to be easily created in a way that can be re-used and embedded in your own dashboard.  In future, it would be good to put energy into developing more widgets and maybe even a usable dashboard application that embeds these widgets.
+This is still early days in the development of this project. Most of the effort until this point has been to develop a framework that provides a javascript interface to operational data from IBM Integration Bus and to facilitate with the development and re-use of widgets that visualise those data.  In future, it would be good to put energy into developing more widgets and maybe even a usable dashboard application that embeds these widgets.
 
 The widgets are exposed as angular directives. Including one of these widgets in your application can be as straight forward as...
 
@@ -11,6 +11,8 @@ The widgets are exposed as angular directives. Including one of these widgets in
  ```
  <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular.min.js"></script>
  <script src="/directives/iib-widgets.js"></script>
+ <script src="//code.jquery.com/jquery-1.10.2.js"></script>
+ <script src="/js/integrationBus.js"></script>
  <link rel="stylesheet" type="text/css" href="/css/style.css">
  ```
 
