@@ -151,15 +151,7 @@
               $scope.toggleEdit=function(){
                 $scope.editMode=!$scope.editMode;
               }
-              $scope.testFlow= function(flowUrl){
-                $http.post("http://localhost:7800/"+flowUrl)
-                  .success(function(data,status,headers,config){
-                  })
-                  .error(function(data,status,headers,config){
-                     console.log("Error");
-                  });
-                $http.post("http://localhost:7801/"+flowUrl);
-              }
+              
             });
 
   app.config(function(iibIntegrationBusProvider){
@@ -195,7 +187,7 @@
       //initialise the widget
       $scope.widget={
         name       : widgetDescriptor.name,
-        label      : widgetDescriptor.label ,
+        label      : widget.label ,
         attributes :[]
       };
       widgetDescriptor.attributes.forEach(function(item){
