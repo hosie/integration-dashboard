@@ -4,8 +4,8 @@
     </div>
     <div class="modal-body ng-scope">
         <carousel interval="myInterval">
-            <slide ng-repeat="widget in installedWidgets" active="slide.active">
-                <img  ng-click="selected = widget" ng-src="{{widget.preview}}" style="margin:auto;">
+            <slide ng-repeat="widget in installedWidgets" active="widget.active">
+                <img ng-src="{{widget.preview}}" style="margin:auto;">
                 <div class="carousel-caption">
                     <h4>{{widget.name}}</h4>
                     <p>{{widget.description}}</p>

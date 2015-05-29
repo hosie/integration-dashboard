@@ -335,7 +335,8 @@ Author John Hosie
     flowStatsWidget.attributes  = [ 
             {
               type : widgetRegistry.attributeType.text,
-              name : "flowName",
+              name : "iibFlowName",
+              label: "Flow Name",
               id   : "iib-flow-name"
             }];
     flowStatsWidget.map=function(integrationBus){
@@ -600,8 +601,26 @@ Author John Hosie
     };
     
     function link(scope,iElement,iAttrs){
-      var widget=widgetRegistry.createWidget(scope.iibWidgetType ,scope.iibAttributes | {} );      
-      d3Util.renderWidget(widget,iElement);      
+      var widget=widgetRegistry.createWidget(scope.iibWidgetType ,scope.iibAttributes || {} );      
+      var rendering = d3Util.renderWidget(widget,iElement);      
+      
+      scope.$watch(
+        function(){
+          var newValue = JSON.stringify(scope.iibAttributes);        
+          return newValue;
+        },
+        function(newValue,oldValue){
+          if(newValue===oldValue){
+            //do nothing
+          }else{          
+            rendering.remove();
+            widget    = widgetRegistry.createWidget("iib-flow-stats",scope.iibAttributes || {} );
+            rendering = d3Util.renderWidget(widget,iElement);
+          }
+        },
+        true
+      );
+      
     };
   };
 
@@ -611,10 +630,7 @@ Author John Hosie
       restrict: 'AC',
         //TODO - can we derive these scope attributes from the widgetSpec factory?
       scope:{
-        iibFlowName:'@',
-        iibMqttHost:'@',
-        iibMqttPort:'@',
-        iibSimulation:'@'
+        iibFlowName:'@'
       },
       link: link
     };

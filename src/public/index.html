@@ -66,14 +66,14 @@
         <div ng-repeat="widget in widgets" class="col-md-3">
           <div class="row">
             <div class="col-md-10">
-              <h3>{{widget.attributes.flowName}}</h3>
+              <h3>{{widget.label}}</h3>
             </div>            
             <div ng-if="editMode" class="col-md-2">
               <img ng-click="editWidget(widget)" src="images/settings-manage_32.png"></img>
             </div>
           </div>
           <div class="row widget-wrapper">
-            <div iib-flow-stats iib-simulation="true"  iib-flow-name="{{widget.attributes.flowName}}" iib-mqtt-host="{{widget.attributes.localhost}}" iib-mqtt-port={{widget.attributes.port}} ></div>          
+            <div iib-widget iib-widget-type="{{widget.specId}}" iib-attributes="widget.attributes"></div>          
           </div>
         </div>
         <div ng-if="editMode" class="col-md-2">
@@ -95,7 +95,6 @@
   }
   var app = angular.module("HelloAngular",['iibWidgets','ui.bootstrap'])//create an application with a dependancy on ngIib 
             .controller("MainController",function($scope,$modal,$http){
-              console.log("Using flow tester");
 
               $scope.attributesForGeneric={
                 iibFlowName : "genericFlowName"
@@ -131,7 +130,7 @@
                 modalInstance.result.then(function (selectedItem) {
                   $scope.selected = selectedItem;
                 }, function () {
-                  console.log('Modal dismissed at: ' + new Date());
+
                 });
               };
 
@@ -139,30 +138,22 @@
               $scope.widgets=[
               ];
 
-              $scope.widgets.add = function(specId){
-                
-              
+              $scope.widgets.add = function(widgetDescriptor){
                 this.push({
-                  specId:specId,
-                  flowName:"MQTTSubscribe",
-                  attributes:{
-                      host:"localhost",
-                      port:4414
-                  }
+                  specId:widgetDescriptor.id,
+                  label:widgetDescriptor.name,
+                  attributes:{}                  
                 });
                 
               };
               
 
               $scope.toggleEdit=function(){
-                console.log("changing edit mode");
                 $scope.editMode=!$scope.editMode;
               }
               $scope.testFlow= function(flowUrl){
-                console.log("testing flow");
                 $http.post("http://localhost:7800/"+flowUrl)
                   .success(function(data,status,headers,config){
-                     console.log("Success");
                   })
                   .error(function(data,status,headers,config){
                      console.log("Error");
@@ -178,19 +169,18 @@
   });
   
   app.controller('AddWidgetController',function($scope,$modalInstance,widgets,iibWidgetSpec){
-    console.log("AddWidgetController");
-
+    
     $scope.widgets=widgets;
     $scope.installedWidgets=iibWidgetSpec.widgets;
-    $scope.selected=$scope.installedWidgets[0];
     
-
     $scope.ok=function(){
-      console.log("selected ");
-      console.dir($scope.selected);
       $modalInstance.close();
-      $scope.widgets.add("iib-flow-stats");
-
+      $scope.installedWidgets.forEach(function(item)        
+      {
+        if(item.active){
+          $scope.widgets.add(item);
+        }
+      });  
     };
 
     $scope.cancel = function () {
@@ -205,24 +195,26 @@
       //initialise the widget
       $scope.widget={
         name       : widgetDescriptor.name,
-        label      : widget.label ,
+        label      : widgetDescriptor.label ,
         attributes :[]
       };
       widgetDescriptor.attributes.forEach(function(item){
         $scope.widget.attributes.push({
           name:item.name,
           type:item.type,
+          label:item.label,
           value:widget.attributes[item.name]
         });        
       });
     });
 
     $scope.ok=function(){
-      console.log("edited ");
       $modalInstance.close();
       $scope.widget.attributes.forEach(function(item){
         widget.attributes[item.name]=item.value;
       });
+      widget.label=$scope.widget.label;
+      
 
     };
 
