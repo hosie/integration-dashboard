@@ -15,91 +15,353 @@ Author John Hosie
 
 (function(){
   angular.module('iibWidgets',[])
-    .factory('iibWidgetSpec',iibWidgetSpecFactory)
+    .factory('iibWidgetSpec',['iibWidgetRegistry',iibWidgetSpecFactory])
     .factory('d3Util',d3UtilFactory)
     .provider('iibIntegrationBus',iibIntegrationBusProviderFunction)
-    .directive('iibFlowStats', ['$rootScope', 'd3Util',iibFlowStatsDirective])
-    .directive('iibSunBurst', ['$rootScope', 'd3Util',iibSunBurstDirective])
-    .directive('iibWidget',    ['$rootScope', 'd3Util',iibWidgetDirective])
+    .directive('iibWidget',['$rootScope', 'd3Util','iibWidgetRegistry',iibWidgetDirective])
+    .provider('iibWidgetRegistry',iibWidgetRegistry)
     ;
 
   //TODO - is there a more angular way of making the widgetRegistry available to the widgets so that they can register themselves?
   //       Could make the widgets services or factories and use dependency inject, this would even work for widgets in separate modules  
   //       How would this affect the portability of the widgets to a non angular framework
-  var widgetRegistry = {
-    attributeType : {
-      text : {
-        isText:function(){        
-          return true;
-        }
-      }
-    },
-    factories:[],
-    /*
-    Parms
-      widgetFactory : function(canvas,data)
-        Constructor function for widget 
-          Parms
-            canvas
-            {
-              svg    : a d3 selection containing the root SVG element for this widget
-              height : the height, in pixels of the area allocated to draw this widget
-              width  : the width, in pixels of the area allocated to draw this widget
-            }
-            data : an object, or array containing the data to be rendered by this widget. 
-                   The structure of this parameter is determined by the map field of the factory
-          Returns : an instance widget object          
-            {
-              init : function(canvas,data)
-                Called once per widget object instance to initialise the D3 elements that will not vary
-              draw : function(canvas,data)
-                Called whenever the bound data changes.
-            }
-          Properties
-            id        : (string) non-normalized (snake case) name of the widget type, e.g. to be used in angular directives
-            map         : function(IntegrationBus,options)
-              Convert the IntegrationBus object to the format of data required. This can be a function provided, specifically for use with this widget or can be one of the general map functions provided by d3Util factory
-            TODO - probably need some way to indicate when to call draw - no point redrawing a chart for every publication if it is not rendering any data that was altered in that publication.  
-                   This is purely a performance optimisation and would really only benefit charts that are static so maybe we just need to no-op the draw function if the chart is static
-    */
-    register:function(widgetFactory){
-      this.factories[widgetFactory.descriptor.id]=widgetFactory;
-      this.factories.push(widgetFactory);
-    },
-    createWidget:function(id,options){
-      var factory = this.factories[id];
-      if(factory){
-        var widget=new factory.widget(options);
-        if(widget.map==undefined){
-          widget.map=function(integrationBus){return integrationBus;};
-        }
-        return widget;
-      }else{
-        return null;
-      }      
-    },
-    describeWidgets:function(){
-      //TODO make this asyncronous?
-      var widgetDescriptions=[];
-      this.factories.forEach(function(factory){
-        //TODO add nls support. Only id should be mandatory and we can optionally lookup and nls JSON file for the other fields
-        widgetDescriptions.push(
-          {
-            id          : factory.descriptor.id,
-            name        : factory.descriptor.name,
-            description : factory.descriptor.description,
-            preview     : factory.descriptor.preview,//this is a URL ( relative or absolute) to an image file. 
-                                          //TODO: draw the widget using simulated data
-            attributes  : factory.descriptor.attributes
-            
+  function iibWidgetRegistry(){
+    var widgetRegistry = {
+      attributeType : {
+        text : {
+          isText:function(){        
+            return true;
           }
-        );
+        }
+      },
+      factories:[],
+      /*
+      Parms
+        widgetFactory : function(canvas,data)
+          Constructor function for widget 
+            Parms
+              canvas
+              {
+                svg    : a d3 selection containing the root SVG element for this widget
+                height : the height, in pixels of the area allocated to draw this widget
+                width  : the width, in pixels of the area allocated to draw this widget
+              }
+              data : an object, or array containing the data to be rendered by this widget. 
+                     The structure of this parameter is determined by the map field of the factory
+            Returns : an instance widget object          
+              {
+                init : function(canvas,data)
+                  Called once per widget object instance to initialise the D3 elements that will not vary
+                draw : function(canvas,data)
+                  Called whenever the bound data changes.
+              }
+            Properties
+              id        : (string) non-normalized (snake case) name of the widget type, e.g. to be used in angular directives
+              map         : function(IntegrationBus,options)
+                Convert the IntegrationBus object to the format of data required. This can be a function provided, specifically for use with this widget or can be one of the general map functions provided by d3Util factory
+              TODO - probably need some way to indicate when to call draw - no point redrawing a chart for every publication if it is not rendering any data that was altered in that publication.  
+                     This is purely a performance optimisation and would really only benefit charts that are static so maybe we just need to no-op the draw function if the chart is static
+      */
+      register:function(widgetFactory){
+        this.factories[widgetFactory.descriptor.id]=widgetFactory;
+        this.factories.push(widgetFactory);
+      },
+      createWidget:function(id,options){
+        var factory = this.factories[id];
+        if(factory){
+          var widget=new factory.widget(options);
+          if(widget.map==undefined){
+            widget.map=function(integrationBus){return integrationBus;};
+          }
+          return widget;
+        }else{
+          return null;
+        }      
+      },
+      describeWidgets:function(){
+        //TODO make this asyncronous?
+        var widgetDescriptions=[];
+        this.factories.forEach(function(factory){
+          //TODO add nls support. Only id should be mandatory and we can optionally lookup and nls JSON file for the other fields
+          widgetDescriptions.push(
+            {
+              id          : factory.descriptor.id,
+              name        : factory.descriptor.name,
+              description : factory.descriptor.description,
+              preview     : factory.descriptor.preview,//this is a URL ( relative or absolute) to an image file. 
+                                            //TODO: draw the widget using simulated data
+              attributes  : factory.descriptor.attributes
+              
+            }
+          );
+          
+        });
+        return widgetDescriptions;
         
-      });
-      return widgetDescriptions;
-      
+      }
+    };
+        
+    this.register=function(factory){
+      widgetRegistry.register(factory);
+    };
+    this.attributeType=widgetRegistry.attributeType;
+    this.$get=function(){
+      return widgetRegistry;        
     }
   };
+  
+  function d3UtilFactory(iibIntegrationBus){
+    var Canvas = function(element, options){
+      this.element=element;
+      this.options=options;
+      this.remove=function(){};//remove() function is re-initialised later, in init()
+      this.reload=function(){
+        this.remove();
+        this.init()
+        
+      };
+      this.init=function(){
+        var fullWidth = d3.select(this.element).node().offsetWidth;
+      
+        //responsive. max margins at these numbers but respond to smaller element sizes with a margin as a fraction of element size
+        var margin = {
+          right : Math.min(80,0.1*fullWidth),
+          left : Math.min(80,0.1*fullWidth)
+        };
+        this.width = fullWidth - margin.left - margin.right;
+        var fullHeight;
+        
+        if(this.options.aspectRatio) {
+          this.height = this.width * this.options.aspectRatio;
+          margin.bottom = Math.min(20,0.1*this.height);
+          margin.top    = Math.min(10,0.05*this.height);
+          fullHeight    = this.height + margin.top + margin.bottom;
+        }else{      
+          fullHeight = Math.max(200,d3.select(this.element).node().offsetHeight);
+          margin.bottom = Math.min(20,0.1*fullHeight);
+          margin.top    = Math.min(10,0.05*fullHeight);
+          this.height = fullHeight - margin.top - margin.bottom;
+        }
+
+        rootSvg = d3.select(this.element) 
+        .append('svg') 
+        .style('width', fullWidth) 
+        .style('height', fullHeight) 
+        .attr('class', 'iib-chart');
+
+        this.svg = rootSvg
+        .append("g") 
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        
+        //initialise the remove() function here so that we do not need to store rootSvg as a property on the object
+        //and risk any consumers of that object from accidentally accessing it
+        this.remove=function(){
+          rootSvg.remove();          
+        }        
+      }
+      
+    };
+    function createCanvas(element, options) {
+        var canvas = new Canvas(element,options);
+        canvas.init();
+        return canvas;
+  	  
+    }
+
+    function renderWidget(widget,iElement){
+      var canvasOptions = {
+        aspectRatio : widget.aspectRatio
+      };
+      var canvas = createCanvas(iElement[0],canvasOptions);
+      iibIntegrationBus.ready(function(err,integrationBus){
+      
+        var data = widget.map(integrationBus);
+            
+        widget.init(canvas,data);
+        widget.draw(canvas,data);
+        integrationBus.integrationNodes.forEach(function(integrationNode){
+          integrationNode.on('messageFlowStats',function(){
+            var data = widget.map(integrationBus);          
+            widget.draw(canvas,data);          
+          });          
+        });        
+      });
+      return {
+        remove:function(){
+          canvas.remove();
+          //TODO unsubscribe to flow stats
+        },
+        reload:function(){
+          canvas.reload();                 
+        }
+      }
+    }
+    return {
+      renderWidget:renderWidget      
+      
+    }
+  }
+ 
+  function iibWidgetDirective($rootScope,d3Util,iibWidgetRegistry){
+    var iibSubscriber=iibSubscriber;
+    return {
+      restrict: 'AC',
+      scope:{
+        iibWidgetType:'@',
+        iibAttributes:'='
+      },
+      link: link
+    };
+    
+    function link(scope,iElement,iAttrs){
+      var widget    = iibWidgetRegistry.createWidget(scope.iibWidgetType ,scope.iibAttributes || {} );      
+      var rendering = d3Util.renderWidget(widget,iElement);      
+      
+      scope.$watch(
+        function(){
+          var newValue = JSON.stringify(scope.iibAttributes);        
+          return newValue;
+        },
+        function(newValue,oldValue){
+          if(newValue===oldValue){
+            //do nothing
+          }else{          
+            rendering.remove();
+            widget    = iibWidgetRegistry.createWidget(scope.iibWidgetType,scope.iibAttributes || {} );
+            rendering = d3Util.renderWidget(widget,iElement);
+          }
+        },
+        true
+      );
+      
+    };
+  };
+    
+  function iibWidgetSpecFactory(iibWidgetRegistry){
+    return {
+      widgets:iibWidgetRegistry.describeWidgets(),
+      getWidget:function(id,callback){
+        console.log("getWidget " + id);
+        var widget;
+        this.widgets.forEach(function(item){
+          if(item.id==id) {
+            callback(item);
+          }
+          widget=item;
+        });
+        if(widget==undefined) {
+          callback(null);
+        }
+      }
+    };
+      
+    var textType={
+      isText:function(){
+        console.log("isText");
+        return true;
+      }
+    };        
+    return {
+      widgets:[
+        {
+          id          : "iib-flow-stats" ,
+          name        : "Througput",
+          description : "Messages per second line graph",
+          preview     : "images/throughput.png",
+          attributes:[
+            {
+              type:textType,
+              name:"flowName",
+              id : "iib-flow-name"
+
+            },
+            {
+              type:textType,        
+              name:"Simulation",
+              id : "iib-simluation"
+            },
+            {
+              type:textType,        
+              name:"Host",
+              id : "iib-simluation"
+            },
+            {
+              type:textType,        
+              name:"Port",
+              id : "iib-simluation"
+            }
+          ]
+        },
+        {
+          id:"iib-cpu-circles",
+          name:"CPU",
+          description:"Message flow, application and integration server CPU utilisation circle pack",
+          preview:"images/cpuCircles.png"
+        },
+        {
+          id:"iib-something",
+          name:"Something",
+          description:"lorem ipsum",
+          preview:"images/something.png"
+        },
+        {
+          id:"iib-something-else",
+          name:"Something else",
+          description:"This one moves",
+          preview:"images/somethingElse.gif"
+        }
+      ],
+      getWidget:function(id,callback){
+        console.log("getWidget " + id);
+        var widget;
+        this.widgets.forEach(function(item){
+          if(item.id==id) {
+            callback(item);
+          }
+          widget=item;
+        });
+        if(widget==undefined) {
+          callback(null);
+        }
+      }
+    };   
+  }
+  
+  function iibIntegrationBusProviderFunction(){
+    this._simulate=false;
+    this.simulate=function(doSimulate){
+      this._simulate=doSimulate;
+    };
+    this.$get=function(){      
+      //TODO inject paho
+      var integrationBus = {
+        obj:null,
+        waiters:[],
+        ready:function(callback){        
+          if(this.obj!=null){
+            callback(null,this.obj);
+          }else{
+            this.waiters.push(callback);          
+          }
+        }
+      };
+      function onLoad(err,obj){
+        integrationBus.obj=obj;
+        integrationBus.waiters.forEach(function(waiter){
+          waiter(err,obj);
+        });
+        integrationBus.waiters=[];
+      }
+      if(this._simulate) {
+        window.Integration.simulateIntegrationBus(onLoad);
+      }else{
+        window.Integration.getIntegrationBus(onLoad);
+      }
+      return integrationBus;
+    };        
+  }
+})();
+
 
   /*Define the sun burst widget
   */
@@ -219,16 +481,74 @@ Author John Hosie
       }
     };
     
-    widgetRegistry.register(sunBurstWidget);
+    function iibSunBurstDirective($rootScope,d3Util,iibWidgetRegistry){
+      return {
+        restrict: 'AC',
+          //TODO - can we derive these scope attributes from the widgetSpec factory?
+        scope:{
+          iibFlowName:'@',
+          iibMqttHost:'@',
+          iibMqttPort:'@',
+          iibSimulation:'@'
+        },
+        link: link
+      };
+
+      function link(scope,iElement,iAttrs){
+        var widget=iibWidgetRegistry.createWidget("iib-sun-burst",scope);
+        
+        d3Util.renderWidget(widget,iElement);      
+      }    
+    }
     
+    angular.module('iibWidgets')
+    .config(function(iibWidgetRegistryProvider){
+      iibWidgetRegistryProvider.register(sunBurstWidget);
+      
+    })
+    .directive('iibSunBurst', ['$rootScope', 'd3Util','iibWidgetRegistry',iibSunBurstDirective])
+    ;
   })();
     
   /*  Define the flow stats widget and register it.
   */
   (function(){
           
+    function iibFlowStatsDirective($rootScope,d3Util,iibWidgetRegistry){
+      var iibSubscriber=iibSubscriber; 
+      return {
+        restrict: 'AC',
+          //TODO - can we derive these scope attributes from the widgetSpec factory?
+        scope:{
+          iibFlowName:'@'
+        },
+        link: link
+      };
+
+      function link(scope,iElement,iAttrs){
+
+        
+        var widget    = iibWidgetRegistry.createWidget("iib-flow-stats",scope);
+        var rendering = d3Util.renderWidget(widget,iElement);
+        
+        scope.$watch(
+          function(){
+            return scope.iibFlowName;        
+          },
+          function(newValue,oldValue){
+            if(newValue===oldValue){
+              //do nothing
+            }else{          
+              rendering.remove();
+              widget    = iibWidgetRegistry.createWidget("iib-flow-stats",scope);
+              rendering = d3Util.renderWidget(widget,iElement);
+            }
+          }
+        );
+      }
+    }
     var timeFormatter;
-    
+
     function FlowStats(options){
       return {
         iibSimulation : options.iibSimulation || false,
@@ -352,27 +672,32 @@ Author John Hosie
         }        
       }
     };
-    var flowStatsWidgetFactory = {
-      widget     : FlowStats,
-      descriptor : {
-        id          : "iib-flow-stats",
-        name        : "Throughput",
-        description : "Messages per second line graph",
-        preview     : "images/throughput.png",
-        attributes  : [ 
-            {
-              type : widgetRegistry.attributeType.text,
-              name : "iibFlowName",
-              label: "Flow Name",
-              id   : "iib-flow-name"
-            }
-        ],
-      }
-      
-    };
-    
-    
-    widgetRegistry.register(flowStatsWidgetFactory);
+          
+          
+          
+    angular.module('iibWidgets')
+    .config(function(iibWidgetRegistryProvider){
+      var flowStatsWidgetFactory = {
+        widget     : FlowStats,
+        descriptor : {
+          id          : "iib-flow-stats",
+          name        : "Throughput",
+          description : "Messages per second line graph",
+          preview     : "images/throughput.png",
+          attributes  : [ 
+              {
+                type : iibWidgetRegistryProvider.attributeType.text,
+                name : "iibFlowName",
+                label: "Flow Name",
+                id   : "iib-flow-name"
+              }
+          ],
+        }
+      };
+      iibWidgetRegistryProvider.register(flowStatsWidgetFactory);
+    })
+    .directive('iibFlowStats', ['$rootScope', 'd3Util','iibWidgetRegistry',iibFlowStatsDirective])
+    ;
   })();
   
   /* Define the circle pack widget and register it.
@@ -511,313 +836,5 @@ Author John Hosie
       }
     };
     circlePackWidget.id="iib-circle-pack";
-    widgetRegistry.register(circlePackWidget);
+    //widgetRegistry.register(circlePackWidget);
   })();  
-
-  function d3UtilFactory(iibIntegrationBus){
-    var Canvas = function(element, options){
-      this.element=element;
-      this.options=options;
-      this.remove=function(){};//remove() function is re-initialised later, in init()
-      this.reload=function(){
-        this.remove();
-        this.init()
-        
-      };
-      this.init=function(){
-        var fullWidth = d3.select(this.element).node().offsetWidth;
-      
-        //responsive. max margins at these numbers but respond to smaller element sizes with a margin as a fraction of element size
-        var margin = {
-          right : Math.min(80,0.1*fullWidth),
-          left : Math.min(80,0.1*fullWidth)
-        };
-        this.width = fullWidth - margin.left - margin.right;
-        var fullHeight;
-        
-        if(this.options.aspectRatio) {
-          this.height = this.width * this.options.aspectRatio;
-          margin.bottom = Math.min(20,0.1*this.height);
-          margin.top    = Math.min(10,0.05*this.height);
-          fullHeight    = this.height + margin.top + margin.bottom;
-        }else{      
-          fullHeight = Math.max(200,d3.select(this.element).node().offsetHeight);
-          margin.bottom = Math.min(20,0.1*fullHeight);
-          margin.top    = Math.min(10,0.05*fullHeight);
-          this.height = fullHeight - margin.top - margin.bottom;
-        }
-
-        rootSvg = d3.select(this.element) 
-        .append('svg') 
-        .style('width', fullWidth) 
-        .style('height', fullHeight) 
-        .attr('class', 'iib-chart');
-
-        this.svg = rootSvg
-        .append("g") 
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-        
-        //initialise the remove() function here so that we do not need to store rootSvg as a property on the object
-        //and risk any consumers of that object from accidentally accessing it
-        this.remove=function(){
-          rootSvg.remove();          
-        }        
-      }
-      
-    };
-    function createCanvas(element, options) {
-        var canvas = new Canvas(element,options);
-        canvas.init();
-        return canvas;
-  	  
-    }
-
-    function renderWidget(widget,iElement){
-      var canvasOptions = {
-        aspectRatio : widget.aspectRatio
-      };
-      var canvas = createCanvas(iElement[0],canvasOptions);
-      iibIntegrationBus.ready(function(err,integrationBus){
-      
-        var data = widget.map(integrationBus);
-            
-        widget.init(canvas,data);
-        widget.draw(canvas,data);
-        integrationBus.integrationNodes.forEach(function(integrationNode){
-          integrationNode.on('messageFlowStats',function(){
-            var data = widget.map(integrationBus);          
-            widget.draw(canvas,data);          
-          });          
-        });        
-      });
-      return {
-        remove:function(){
-          canvas.remove();
-          //TODO unsubscribe to flow stats
-        },
-        reload:function(){
-          canvas.reload();                 
-        }
-      }
-    }
-    return {
-      renderWidget:renderWidget      
-      
-    }
-  }
- 
-  function iibWidgetDirective($rootScope,d3Util){
-    var iibSubscriber=iibSubscriber;
-    return {
-      restrict: 'AC',
-      scope:{
-        iibWidgetType:'@',
-        iibAttributes:'='
-      },
-      link: link
-    };
-    
-    function link(scope,iElement,iAttrs){
-      var widget=widgetRegistry.createWidget(scope.iibWidgetType ,scope.iibAttributes || {} );      
-      var rendering = d3Util.renderWidget(widget,iElement);      
-      
-      scope.$watch(
-        function(){
-          var newValue = JSON.stringify(scope.iibAttributes);        
-          return newValue;
-        },
-        function(newValue,oldValue){
-          if(newValue===oldValue){
-            //do nothing
-          }else{          
-            rendering.remove();
-            widget    = widgetRegistry.createWidget("iib-flow-stats",scope.iibAttributes || {} );
-            rendering = d3Util.renderWidget(widget,iElement);
-          }
-        },
-        true
-      );
-      
-    };
-  };
-
-  function iibFlowStatsDirective($rootScope,d3Util){
-    var iibSubscriber=iibSubscriber; 
-    return {
-      restrict: 'AC',
-        //TODO - can we derive these scope attributes from the widgetSpec factory?
-      scope:{
-        iibFlowName:'@'
-      },
-      link: link
-    };
-
-    function link(scope,iElement,iAttrs){
-
-      
-      var widget    = widgetRegistry.createWidget("iib-flow-stats",scope);
-      var rendering = d3Util.renderWidget(widget,iElement);
-      
-      scope.$watch(
-        function(){
-          return scope.iibFlowName;        
-        },
-        function(newValue,oldValue){
-          if(newValue===oldValue){
-            //do nothing
-          }else{          
-            rendering.remove();
-            widget    = widgetRegistry.createWidget("iib-flow-stats",scope);
-            rendering = d3Util.renderWidget(widget,iElement);
-          }
-        }
-      );
-    }
-  }
-
-  function iibSunBurstDirective($rootScope,d3Util){
-    var iibSubscriber=iibSubscriber; 
-    return {
-      restrict: 'AC',
-        //TODO - can we derive these scope attributes from the widgetSpec factory?
-      scope:{
-        iibFlowName:'@',
-        iibMqttHost:'@',
-        iibMqttPort:'@',
-        iibSimulation:'@'
-      },
-      link: link
-    };
-
-    function link(scope,iElement,iAttrs){
-      var widget=widgetRegistry.createWidget("iib-sun-burst",scope);
-      
-      d3Util.renderWidget(widget,iElement);      
-    }    
-  }
-
-  function iibWidgetSpecFactory(){
-    return {
-      widgets:widgetRegistry.describeWidgets(),
-      getWidget:function(id,callback){
-        console.log("getWidget " + id);
-        var widget;
-        this.widgets.forEach(function(item){
-          if(item.id==id) {
-            callback(item);
-          }
-          widget=item;
-        });
-        if(widget==undefined) {
-          callback(null);
-        }
-      }
-    };
-      
-    var textType={
-      isText:function(){
-        console.log("isText");
-        return true;
-      }
-    };        
-    return {
-      widgets:[
-        {
-          id          : "iib-flow-stats" ,
-          name        : "Througput",
-          description : "Messages per second line graph",
-          preview     : "images/throughput.png",
-          attributes:[
-            {
-              type:textType,
-              name:"flowName",
-              id : "iib-flow-name"
-
-            },
-            {
-              type:textType,        
-              name:"Simulation",
-              id : "iib-simluation"
-            },
-            {
-              type:textType,        
-              name:"Host",
-              id : "iib-simluation"
-            },
-            {
-              type:textType,        
-              name:"Port",
-              id : "iib-simluation"
-            }
-          ]
-        },
-        {
-          id:"iib-cpu-circles",
-          name:"CPU",
-          description:"Message flow, application and integration server CPU utilisation circle pack",
-          preview:"images/cpuCircles.png"
-        },
-        {
-          id:"iib-something",
-          name:"Something",
-          description:"lorem ipsum",
-          preview:"images/something.png"
-        },
-        {
-          id:"iib-something-else",
-          name:"Something else",
-          description:"This one moves",
-          preview:"images/somethingElse.gif"
-        }
-      ],
-      getWidget:function(id,callback){
-        console.log("getWidget " + id);
-        var widget;
-        this.widgets.forEach(function(item){
-          if(item.id==id) {
-            callback(item);
-          }
-          widget=item;
-        });
-        if(widget==undefined) {
-          callback(null);
-        }
-      }
-    };   
-  }
-  
-  function iibIntegrationBusProviderFunction(){
-    this._simulate=false;
-    this.simulate=function(doSimulate){
-      this._simulate=doSimulate;
-    };
-    this.$get=function(){      
-      //TODO inject paho
-      var integrationBus = {
-        obj:null,
-        waiters:[],
-        ready:function(callback){        
-          if(this.obj!=null){
-            callback(null,this.obj);
-          }else{
-            this.waiters.push(callback);          
-          }
-        }
-      };
-      function onLoad(err,obj){
-        integrationBus.obj=obj;
-        integrationBus.waiters.forEach(function(waiter){
-          waiter(err,obj);
-        });
-        integrationBus.waiters=[];
-      }
-      if(this._simulate) {
-        window.Integration.simulateIntegrationBus(onLoad);
-      }else{
-        window.Integration.getIntegrationBus(onLoad);
-      }
-      return integrationBus;
-    };        
-  }
-})();
-
