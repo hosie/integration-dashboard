@@ -11,6 +11,10 @@
           {
             templateUrl:'/Test/partials/sunBurst.html'
           })
+    .when('/circleChart',
+          {
+            templateUrl:'/Test/partials/circleChart.html'
+          })
 	.otherwise({redirectTo:'/'});
   });
   testApp.controller("MainController",function(){
