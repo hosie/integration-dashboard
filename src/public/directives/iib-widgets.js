@@ -168,6 +168,7 @@ Author John Hosie
       }
       
     };
+    
     function createCanvas(element, options) {
         var canvas = new Canvas(element,options);
         canvas.init();
@@ -181,19 +182,22 @@ Author John Hosie
         center      : widget.center || false
       };
       var canvas = createCanvas(iElement[0],canvasOptions);
+      var self=this;
       iibIntegrationBus.ready(function(err,integrationBus){
       
         var data = widget.map(integrationBus);
             
-        widget.init(canvas,data);
-        widget.draw(canvas,data);
+        widget.init(canvas,data,self);
+        widget.draw(canvas,data,self);
+        
         integrationBus.integrationNodes.forEach(function(integrationNode){
           integrationNode.on('messageFlowStats',function(){
             var data = widget.map(integrationBus);          
-            widget.draw(canvas,data);          
+            widget.draw(canvas,data,self);          
           });          
         });        
-      });
+      });     
+      
       return {
         remove:function(){
           canvas.remove();
@@ -204,9 +208,27 @@ Author John Hosie
         }
       }
     }
+    
+    function childrenAccessor(d){
+        if(d.type==="MessageFlow")
+        {
+            return null;
+        }else if (d.type==="Application")
+        {
+            return d.messageFlows;
+        }else if((d.type==="IntegrationServer")||((d.type==="executionGroup"))){
+            return d.applications;
+        }else if((d.type==="IntegrationNode")||(d.type==="broker")){
+            return d.integrationServers;
+        }else if(d.type==="IntegrationBus"){
+            return d.integrationNodes;
+        }
+        return null;
+    };
+    
     return {
-      renderWidget:renderWidget      
-      
+      renderWidget : renderWidget,
+      children     : childrenAccessor
     }
   }
  
@@ -377,22 +399,7 @@ Author John Hosie
     // Interpolate the scales!
     
     
-    var childrenAccessor=function(d){
-        if(d.type==="MessageFlow")
-        {
-            return null;
-        }else if (d.type==="Application")
-        {
-            return d.messageFlows;
-        }else if((d.type==="IntegrationServer")||((d.type==="executionGroup"))){
-            return d.applications;
-        }else if((d.type==="IntegrationNode")||(d.type==="broker")){
-            return d.integrationServers;
-        }else if(d.type==="IntegrationBus"){
-            return d.integrationNodes;
-        }
-        return null;
-    };
+    
     var valueFunction=function(d){
       if (d.snapshots && d.snapshots.length>0){
                 
@@ -407,7 +414,7 @@ Author John Hosie
     function SunBurst(options){
       return {
         aspectRatio : 1,
-        init:function (canvas,data){
+        init:function (canvas,data,util){
           this.radius = canvas.width/2;
           var x = d3.scale.linear()
             .range([0, 2 * Math.PI]);
@@ -420,7 +427,7 @@ Author John Hosie
               
           this.partition = d3.layout.partition()
             .value(valueFunction)
-            .children(childrenAccessor);
+            .children(util.children);
             
           this.arc = d3.svg.arc()
             .startAngle(function(d) { return Math.max(0, Math.min(2 * Math.PI, x(d.x))); })
