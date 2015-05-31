@@ -150,9 +150,16 @@ Author John Hosie
         .attr('class', 'iib-chart');
 
         this.svg = rootSvg
-        .append("g") 
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-        
+        .append("g"); 
+        if(options.center){
+          this.svg.attr("transform",
+                        "translate(" + (margin.left + this.width/2 ) + "," + (margin.top + this.height/2) + 
+                         ")");
+          
+        }else{
+          this.svg.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+          
+        }
         //initialise the remove() function here so that we do not need to store rootSvg as a property on the object
         //and risk any consumers of that object from accidentally accessing it
         this.remove=function(){
@@ -170,7 +177,8 @@ Author John Hosie
 
     function renderWidget(widget,iElement){
       var canvasOptions = {
-        aspectRatio : widget.aspectRatio
+        aspectRatio : widget.aspectRatio,
+        center      : widget.center || false
       };
       var canvas = createCanvas(iElement[0],canvasOptions);
       iibIntegrationBus.ready(function(err,integrationBus){
