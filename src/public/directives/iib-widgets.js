@@ -358,9 +358,22 @@ Author John Hosie
   }
   
   function iibIntegrationBusProviderFunction(){
-    this._simulate=false;
-    this.simulate=function(doSimulate){
-      this._simulate=doSimulate;
+    function defaultSimulator(integrationBus){
+      integrationBus
+      .addIntegrationNode("Node")
+      .addIntegrationServer("Server")
+      .addApplication("Application")
+      .addMessageFlow("MessageFlow");
+    }
+    this._simulator=null;
+    this.simulate=function(simulator){
+      //simulator is a function that will take an empty integration bus simulation and 
+      //populate its structure
+      if(simulator != undefined){
+        this._simulator=simulator;  
+      }else{
+        this._simulator=defaultSimulator;
+      }      
     };
     this.$get=function(){      
       //TODO inject paho
@@ -382,8 +395,15 @@ Author John Hosie
         });
         integrationBus.waiters=[];
       }
-      if(this._simulate) {
-        window.Integration.simulateIntegrationBus(onLoad);
+      if(this._simulator != null) {
+        var simulatorCallback = this._simulator;
+        window.Integration.simulateIntegrationBus(function(err,integrationBus){
+          if(err==null){                     
+            //call the registered callback to populate the simulation
+            simulatorCallback(integrationBus);            
+          }
+          onLoad(err,integrationBus);                      
+        });
       }else{
         window.Integration.getIntegrationBus(onLoad);
       }
