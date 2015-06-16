@@ -521,10 +521,6 @@ Author John Hosie
         restrict: 'AC',
           //TODO - can we derive these scope attributes from the widgetSpec factory?
         scope:{
-          iibFlowName:'@',
-          iibMqttHost:'@',
-          iibMqttPort:'@',
-          iibSimulation:'@'
         },
         link: link
       };
@@ -588,7 +584,7 @@ Author John Hosie
       return {
         iibSimulation : options.iibSimulation || false,
         iibFlowName   : options.iibFlowName   || null,
-        aspectRatio : 1,
+        aspectRatio : 1/4,
         map:function(integrationBus){
           //return an array of arrays.
           // the inner array is the array of snapshots, the outer array contains one of those for each instance of the flow
