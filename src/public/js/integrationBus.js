@@ -513,7 +513,7 @@ Integration = (function(){
                       }
                     });
       
-    },5000);    
+    },50);    
   };
   MessageFlowSimulation.prototype = new MessageFlow();
   
